@@ -1,13 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
 import { CreateCatDto } from './CreateCatDto';
+import { CatsService } from './cats.service';
+import { Cat } from './interface/cat.interface';
 
 @Controller('cats')
 export class CatsController {
+    constructor(private catsService: CatsService) { };
 
     // 전체 목록을 조회하는 메서드
     @Get()
-    findAll(): string {
-        return "This action returns all cats";
+    findAll(): Cat[] {
+        return this.catsService.findeAll();
     }
 
     // 단건 상세조회
@@ -18,7 +21,7 @@ export class CatsController {
 
     @Post()
     create(@Body() createCatDto: CreateCatDto) {
-        return 'This action adds a new cat';
+        return this.catsService.create(createCatDto);
     }
 
     @Put(':id')
