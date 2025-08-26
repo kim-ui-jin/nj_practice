@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { CatsModule } from './cats/cats.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cat } from './cats/entity/cats.entity';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -17,7 +18,8 @@ import { Cat } from './cats/entity/cats.entity';
       entities: [Cat],
       synchronize: true,
     }),
-    CatsModule],
+    CatsModule,
+    AuthModule],
   controllers: [AppController],
   providers: [AppService],
 })
