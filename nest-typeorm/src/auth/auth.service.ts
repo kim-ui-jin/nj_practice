@@ -28,8 +28,8 @@ export class AuthService {
         }
 
         const validatePassword = await bcrypt.compare(userDto.password, userFind.password);
-        
-        if (!validatePassword || !userFind) {
+
+        if (!validatePassword) {
             throw new UnauthorizedException();
         }
 
