@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserDTO } from './dto/user.dto';
 import { User } from './entity/user.entity';
@@ -16,4 +16,16 @@ export class AuthService {
         }
         return this.userService.save(newUser);
     }
+
+    async validateUser(userDTO: UserDTO): Promise<User> {
+        const userFind = await this.userService.findByFields({
+            where: { username: userDTO.username }
+        });
+        if (!userFind || userDTO.password !== userFind.password) {
+            throw new UnauthorizedException();
+        }
+        return userFind;
+    }
+
+
 }

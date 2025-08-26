@@ -7,8 +7,15 @@ import { User } from './entity/user.entity';
 export class AuthController {
     constructor(private authService: AuthService) {}
 
+    // 회원가입
     @Post('register')
     registerAccount(@Body() userDto: UserDTO): Promise<User> {
         return this.authService.registerUser(userDto);
+    }
+
+    // 로그인
+    @Post('login')
+    login(@Body() userDto: UserDTO): Promise<User> {
+        return this.authService.validateUser(userDto);
     }
 }
