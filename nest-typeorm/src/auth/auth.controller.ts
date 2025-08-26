@@ -15,7 +15,7 @@ export class AuthController {
 
     // 로그인
     @Post('login')
-    login(@Body() userDto: UserDTO): Promise<User> {
+    login(@Body() userDto: UserDTO): Promise<string> {
         return this.authService.validateUser(userDto);
     }
 }

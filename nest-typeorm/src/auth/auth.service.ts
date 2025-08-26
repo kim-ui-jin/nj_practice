@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@n
 import { UserService } from './user.service';
 import { UserDTO } from './dto/user.dto';
 import { User } from './entity/user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -17,15 +18,22 @@ export class AuthService {
         return this.userService.save(newUser);
     }
 
-    async validateUser(userDto: UserDTO): Promise<User> {
+    async validateUser(userDto: UserDTO): Promise<string> {
         const userFind = await this.userService.findByFields({
             where: { username: userDto.username }
         });
-        if (!userFind || userDto.password !== userFind.password) {
+
+        if (!userFind) {
             throw new UnauthorizedException();
         }
-        return userFind;
-    }
 
+        const validatePassword = await bcrypt.compare(userDto.password, userFind.password);
+        
+        if (!validatePassword || !userFind) {
+            throw new UnauthorizedException();
+        }
+
+        return "loginSuccess";
+    }
 
 }
