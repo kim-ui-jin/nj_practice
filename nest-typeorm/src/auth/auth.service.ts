@@ -17,11 +17,11 @@ export class AuthService {
         return this.userService.save(newUser);
     }
 
-    async validateUser(userDTO: UserDTO): Promise<User> {
+    async validateUser(userDto: UserDTO): Promise<User> {
         const userFind = await this.userService.findByFields({
-            where: { username: userDTO.username }
+            where: { username: userDto.username }
         });
-        if (!userFind || userDTO.password !== userFind.password) {
+        if (!userFind || userDto.password !== userFind.password) {
             throw new UnauthorizedException();
         }
         return userFind;
