@@ -3,10 +3,15 @@ import { UserService } from './user.service';
 import { UserDTO } from './dto/user.dto';
 import { User } from './entity/user.entity';
 import * as bcrypt from 'bcrypt';
+import { Payload } from './security/payload.interface';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
-    constructor(private userService: UserService) { }
+    constructor(
+        private userService: UserService,
+        private jwtService: JwtService
+    ) { }
 
     async registerUser(newUser: UserDTO): Promise<User> {
         const userFind = await this.userService.findByFields({
@@ -18,7 +23,7 @@ export class AuthService {
         return this.userService.save(newUser);
     }
 
-    async validateUser(userDto: UserDTO): Promise<string> {
+    async validateUser(userDto: UserDTO): Promise<{ accessToken: string }> {
         const userFind = await this.userService.findByFields({
             where: { username: userDto.username }
         });
@@ -33,7 +38,9 @@ export class AuthService {
             throw new UnauthorizedException();
         }
 
-        return "loginSuccess";
+        const payload: Payload = { id: userFind.id, username: userFind.username }
+
+        return { accessToken: this.jwtService.sign(payload) };
     }
 
 }
