@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserDTO } from './dto/user.dto';
 import { User } from '../domain/entity/user.entity';
@@ -14,6 +14,7 @@ export class AuthController {
 
     // 회원가입
     @Post('register')
+    @UsePipes(ValidationPipe)
     registerAccount(@Body() userDto: UserDTO): Promise<User> {
         return this.authService.registerUser(userDto);
     }

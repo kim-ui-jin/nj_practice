@@ -5,9 +5,6 @@ function ormConfig(): TypeOrmModuleOptions {
         SYNCRONIZE: false,
         ENTITIES: [__dirname + '/**/*.entity{.ts,.js}'],
         MIGRATIONS: [__dirname + '/migration/**/*{.ts,.js}'],
-        CLI: {
-            migrationDir: 'src/migrations',
-        },
         MIGRATIONS_RUN: false,
     };
 
