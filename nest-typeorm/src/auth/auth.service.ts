@@ -51,9 +51,20 @@ export class AuthService {
 
     // authorities의 전체 값이 아니라 권한만 들어가야 하기 때문에 수정이 필요
     async tokenValidateUser(payload: Payload): Promise<User | null> {
-        return await this.userService.findByFields({
+        const userFind = await this.userService.findByFields({
             where: { id: payload.id }
         })
+        this.flatAuthorities(userFind);
+        return userFind;
+    }
+
+    private flatAuthorities(user: any): User {
+        if (user && user.authorities) {
+            const authorities: string[] = [];
+            user.authorities.forEach(authority => authorities.push(authority.authorityName));
+            user.authorities = authorities;
+        }
+        return user;
     }
 
     private convertInAuthorities(user: any): User {
