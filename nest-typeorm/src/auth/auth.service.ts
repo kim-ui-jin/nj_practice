@@ -38,15 +38,32 @@ export class AuthService {
             throw new UnauthorizedException();
         }
 
-        const payload: Payload = { id: userFind.id, username: userFind.username }
+        this.convertInAuthorities(userFind);
+
+        const payload: Payload = {
+            id: userFind.id,
+            username: userFind.username,
+            authorities: userFind.authorities
+        }
 
         return { accessToken: this.jwtService.sign(payload) };
     }
 
+    // authorities의 전체 값이 아니라 권한만 들어가야 하기 때문에 수정이 필요
     async tokenValidateUser(payload: Payload): Promise<User | null> {
         return await this.userService.findByFields({
             where: { id: payload.id }
         })
     }
 
+    private convertInAuthorities(user: any): User {
+        if (user && user.authorities) {
+            const authorities: any[] = [];
+            user.authorities.forEach(authority => {
+                authorities.push({ name: authority.authorityName });
+            })
+            user.authorities = authorities;
+        };
+        return user;
+    }
 }

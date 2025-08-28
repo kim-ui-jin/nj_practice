@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
 import { CatsService } from './cats.service';
 import { Cat } from './entity/cats.entity';
+import { CatDto } from './dto/cat.dto';
 
 @Controller('cats')
 export class CatsController {
@@ -32,8 +33,9 @@ export class CatsController {
 
     // 정보 수정
     @Put(':id')
-    update(@Param('id') id: number, @Body() cat: Cat) {
-        this.catsService.update(id, cat);
-        return `This action updates a #${id} cat`;
+    update(@Param('id') id: number, @Body() dto: CatDto) { // @Body('birthday') birth: number
+
+        this.catsService.update(id, dto);
+        return `This action updates a #${id} cat and ${dto.birthday}`;
     }
 }

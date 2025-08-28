@@ -7,7 +7,7 @@ import { AuthGuard } from '@nestjs/passport';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private authService: AuthService) {}
+    constructor(private authService: AuthService) { }
 
     // 회원가입
     @Post('register')
@@ -19,7 +19,7 @@ export class AuthController {
     @Post('login')
     async login(@Body() userDto: UserDTO, @Res() res: Response): Promise<any> {
         const jwt = await this.authService.validateUser(userDto);
-        res.setHeader('Authorization', 'Bearer '+jwt.accessToken);
+        res.setHeader('Authorization', 'Bearer ' + jwt.accessToken);
         return res.json(jwt)
     }
 
