@@ -1,9 +1,12 @@
 import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserDTO } from './dto/user.dto';
-import { User } from './entity/user.entity';
+import { User } from '../domain/entity/user.entity';
 import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from './security/roles.guard';
+import { Roles } from './decorator/role.decorator';
+import { RoleType } from './role-type';
 
 @Controller('auth')
 export class AuthController {
@@ -26,6 +29,14 @@ export class AuthController {
     @Get('authenticate')
     @UseGuards(AuthGuard('jwt'))
     isAuthenticated(@Req() req: Request): any {
+        const user: any = req.user;
+        return user;
+    }
+
+    @Get('admin-role')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles(RoleType.ADMIN) // RoleType의 ADMIN일 경우에만 사용 가능하게
+    adminRoleCheck(@Req() req: Request): any {
         const user: any = req.user;
         return user;
     }

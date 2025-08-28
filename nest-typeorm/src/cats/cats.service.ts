@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Cat } from './entity/cats.entity';
+import { Cat } from '../domain/entity/cats.entity';
 import { getConnection, Repository } from 'typeorm';
 import { CatDto } from './dto/cat.dto';
 
