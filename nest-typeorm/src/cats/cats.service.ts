@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cat } from '../domain/entity/cats.entity';
-import { getConnection, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { CatDto } from './dto/cat.dto';
 
 @Injectable()
@@ -43,6 +43,6 @@ export class CatsService {
         if (existedCat.affected === 0) { // 몇 개의 행이 수정 되었는지를 알려주는 숫자 만약 업데이트 된 행이 0개라면 NotFoundException을 날림
             throw new NotFoundException(`Cat With id #${id} not found`);
         }
-
+        
     }
 }
