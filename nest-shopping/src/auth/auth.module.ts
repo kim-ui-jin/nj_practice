@@ -17,7 +17,7 @@ import { JwtStrategy } from './jwt/jwt.strategy';
     }),
     PassportModule
   ],
-  exports: [JwtModule, AuthService], // 다른 모듈에서 JwtModule과 AuthService를 사용할 수 있도록 내보냄
+  exports: [JwtModule], // 다른 모듈에서 JwtModule과 사용할 수 있도록 내보냄
   providers: [AuthService, UserService, JwtStrategy],
   controllers: [AuthController]
 })
