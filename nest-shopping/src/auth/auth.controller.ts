@@ -13,9 +13,11 @@ export class AuthController {
 
     // 로그인
     @Post('login')
-    async login(@Body() loginUserDto: LoginUserDto, @Res() res: Response) {
+    async login(@Body() loginUserDto: LoginUserDto, @Res({ passthrough: true }) res: Response) {
+
         const jwt = await this.authService.login(loginUserDto);
         res.setHeader('Authorization', 'Bearer ' + jwt.accessToken);
-        return res.json(jwt)
+
+        return ({ message: '로그인 성공', jwt });
     }
 }

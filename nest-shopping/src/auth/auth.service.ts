@@ -34,11 +34,12 @@ export class AuthService {
         const payload = { seq: user.seq, userId: user.userId, userName: user.userName };
 
         return { accessToken: this.jwtService.sign(payload) }
+
     }
 
     // 토큰 검증
     async tokenValidateUser(payload: JwtPayload): Promise<User | null> {
-        const user = await this.userService.findByFiled(payload.seq);
+        const user = await this.userService.findByField(payload.seq);
         return user;
     }
 }
