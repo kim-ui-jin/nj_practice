@@ -11,3 +11,7 @@ export class LoginUserDto {
     userPassword: string;
 }
 
+export class ChangePasswordDto {
+    currentPassword: string;
+    newPassword: string;
+}
