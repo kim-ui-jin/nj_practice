@@ -20,4 +20,7 @@ export class User {
 
     @Column({ type: 'varchar', length: 20, nullable: false, unique: true })
     userPhone: string;
+
+    @Column({ type: 'varchar', length: 255, nullable: true })
+    refreshTokenHash: string | null;
 }

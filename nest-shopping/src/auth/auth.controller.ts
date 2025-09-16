@@ -1,8 +1,9 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Post, Res, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginUserDto } from 'src/user/dto/user.dto';
 import { UserService } from 'src/user/user.service';
+import { JwtAuthGuard } from './jwt/jwt.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -14,10 +15,22 @@ export class AuthController {
     // 로그인
     @Post('login')
     async login(@Body() loginUserDto: LoginUserDto, @Res({ passthrough: true }) res: Response) {
+        const result = await this.authService.login(loginUserDto);
+        res.setHeader('Authorization', 'Bearer ' + result.accessToken);
+        return result;
+    }
 
-        const jwt = await this.authService.login(loginUserDto);
-        res.setHeader('Authorization', 'Bearer ' + jwt.accessToken);
+    // 토큰 재발급
+    @Post('refresh')
+    async refresh(@Body('refreshToken') refreshToken: string) {
+        if (!refreshToken) throw new UnauthorizedException('리프레시 토큰이 없습니다.');
+        return this.authService.refreshByToken(refreshToken);
+    }
 
-        return ({ message: '로그인 성공', jwt });
+    // 로그아웃
+    @Post('logout')
+    @UseGuards(JwtAuthGuard)
+    async logout(@Req() req: any) {
+        return await this.authService.logout(req.user.seq);
     }
 }
