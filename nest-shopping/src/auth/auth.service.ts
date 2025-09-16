@@ -38,8 +38,7 @@ export class AuthService {
     }
 
     // 토큰 검증
-    async tokenValidateUser(payload: JwtPayload): Promise<User | null> {
-        const user = await this.userService.findByField(payload.seq);
-        return user;
+    tokenValidateUser(payload: JwtPayload): Promise<User | null> {     
+        return this.userService.findByField(payload.seq);
     }
 }

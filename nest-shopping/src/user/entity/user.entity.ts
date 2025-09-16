@@ -6,18 +6,18 @@ export class User {
     @PrimaryGeneratedColumn()
     seq: number;
 
-    @Column()
+    @Column({ type: 'varchar', length: 10, nullable: false, unique: true })
     userId: string;
 
-    @Column()
+    @Column({ type: 'varchar', length: 255, nullable: false })
     userPassword: string;
 
-    @Column()
+    @Column({ type: 'varchar', length: 20, nullable: false })
     userName: string;
 
-    @Column()
+    @Column({ type: 'varchar', length: 50, nullable: false, unique: true })
     userEmail: string;
 
-    @Column()
+    @Column({ type: 'varchar', length: 20, nullable: false, unique: true })
     userPhone: string;
 }
