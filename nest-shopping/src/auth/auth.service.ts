@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LoginUserDto } from 'src/user/dto/user.dto';
@@ -37,7 +37,7 @@ export class AuthService {
 
         const accessToken = this.jwtService.sign(accessPayload, {
             secret: 'mySecretkey',
-            expiresIn: '30s'
+            expiresIn: '10m'
         });
         const refreshToken = this.jwtService.sign(refreshPayload, {
             secret: 'myRefreshKey',
@@ -62,7 +62,17 @@ export class AuthService {
                 secret: 'myRefreshKey'
             });
         } catch (err) {
-            if (err.name === 'TokenExpiredError') throw new UnauthorizedException('리프레시 토큰 만료')
+            if (err.name === 'TokenExpiredError') {
+                const tokenExpired = this.jwtService.verify(refreshToken, {
+                    secret: 'myRefreshKey',
+                    ignoreExpiration: true
+                });
+                const seq = tokenExpired.seq;
+                if (seq) {
+                    await this.userRepository.update(seq, { refreshTokenHash: null });
+                }
+                throw new UnauthorizedException('리프레시 토큰 만료')
+            }
             throw new UnauthorizedException('리프레시 토큰 검증 실패');
         }
 
@@ -83,7 +93,7 @@ export class AuthService {
 
         const newAccessToken = this.jwtService.sign(newAccessPayload, {
             secret: 'mySecretkey',
-            expiresIn: '30s'
+            expiresIn: '10m'
         })
         const newRefreshToken = this.jwtService.sign(newRefreshPayload, {
             secret: 'myRefreshKey',
@@ -100,9 +110,15 @@ export class AuthService {
     }
 
     // 리프레시 토큰을 DB에 저장
-    async saveRefreshToken(seq: number, refreshToken: string) {
-        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-        await this.userRepository.update(seq, { refreshTokenHash });
+    async saveRefreshToken(seq: number, refreshToken: string): Promise<void> {
+
+        try {
+            const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+            await this.userRepository.update(seq, { refreshTokenHash });
+        } catch (err) {
+            throw new InternalServerErrorException('리프레시 토큰 저장 중 오류가 발생했습니다.')
+        }
+
     }
 
     // 토큰 검증
@@ -112,7 +128,13 @@ export class AuthService {
 
     // 로그아웃
     async logout(seq: number): Promise<BaseResponseDto> {
-        await this.userRepository.update(seq, { refreshTokenHash: null });
-        return { success: true, message: '로그아웃 성공'}
+
+        try {
+            await this.userRepository.update(seq, { refreshTokenHash: null });
+            return { success: true, message: '로그아웃 성공' };
+        } catch (err) {
+            return { success: false, message: '로그아웃 처리 중 오류가 발생했습니다.' };
+        }
+
     }
 }

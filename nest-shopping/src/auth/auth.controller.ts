@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Res, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Res, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginUserDto } from 'src/user/dto/user.dto';
@@ -23,7 +23,7 @@ export class AuthController {
     // 토큰 재발급
     @Post('refresh')
     async refresh(@Body('refreshToken') refreshToken: string) {
-        if (!refreshToken) throw new UnauthorizedException('리프레시 토큰이 없습니다.');
+        if (!refreshToken) throw new BadRequestException('리프레시 토큰이 없습니다.');
         return this.authService.refreshByToken(refreshToken);
     }
 
@@ -31,6 +31,6 @@ export class AuthController {
     @Post('logout')
     @UseGuards(JwtAuthGuard)
     async logout(@Req() req: any) {
-        return await this.authService.logout(req.user.seq);
+        return this.authService.logout(req.user.seq);
     }
 }

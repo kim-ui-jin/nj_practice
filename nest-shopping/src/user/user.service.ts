@@ -56,6 +56,7 @@ export class UserService {
         }
 
         user.userPassword = await bcrypt.hash(changePasswordDto.newPassword, 10);
+        user.refreshTokenHash = null;
 
         await this.userRepository.save(user);
 
