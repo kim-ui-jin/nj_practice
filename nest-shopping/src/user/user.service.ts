@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Get, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
 import { Repository } from 'typeorm';
@@ -6,6 +6,7 @@ import { ChangePasswordDto, CreateUserDto } from './dto/user.dto';
 import * as bcrypt from 'bcrypt';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
 type SafeUser = Omit<User, 'userPassword'>;
+type GetMyInfo = Pick<User, 'userId' | 'userName' | 'userEmail' | 'userPhone'>
 
 @Injectable()
 export class UserService {
@@ -19,7 +20,7 @@ export class UserService {
         const existedUser = await this.userRepository.findOne({ where: { userId: createUserDto.userId } });
         const existedEmail = await this.userRepository.findOne({ where: { userEmail: createUserDto.userEmail } });
         const existedPhone = await this.userRepository.findOne({ where: { userPhone: createUserDto.userPhone } });
-        
+
         if (existedUser) throw new BadRequestException('이미 존재하는 아이디입니다.');
         if (existedEmail) throw new BadRequestException('이미 존재하는 이메일입니다.');
         if (existedPhone) throw new BadRequestException('이미 존재하는 전화번호입니다.');
@@ -63,4 +64,40 @@ export class UserService {
         return { success: true, message: '비밀번호 변경 성공' }
 
     }
+
+    // 중복 아이디 조회
+    async existsByUserId(userId: string): Promise<boolean> {
+        return await this.userRepository.exists({ where: { userId } });
+    }
+
+    // 내 정보조회
+    async getMyInfo(seq: number, currentPassword: string): Promise<GetMyInfo> {
+
+        const user = await this.userRepository.findOne({ where: { seq } });
+        if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+
+        const comparedPassword = await bcrypt.compare(currentPassword, user.userPassword);
+        if (!comparedPassword) throw new UnauthorizedException('비밀번호가 올바르지 않습니다');
+
+        const { userPassword, refreshTokenHash, seq: _seq, ...safe } = user;
+
+        return safe as GetMyInfo;
+    }
+
+    // 노출 가능한 공개 필드만 선택 조회
+    async findPublicBySeq(seq: number) {
+        return this.userRepository.findOne({
+            where: { seq },
+            select: { seq: true, userId: true, userEmail: true, userPhone: true }
+        });
+    }
+
+    // 비밀번호 비교용
+    async findWithPasswordBySeq(seq: number) {
+        return this.userRepository.findOne({
+            where: { seq },
+            select: { seq: true, userPassword: true }
+        });
+    }
+
 }

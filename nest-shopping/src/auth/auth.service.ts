@@ -36,11 +36,11 @@ export class AuthService {
         const refreshPayload = { seq: user.seq };
 
         const accessToken = this.jwtService.sign(accessPayload, {
-            secret: 'mySecretkey',
-            expiresIn: '10m'
+            secret: process.env.JWT_ACCESS_SECRET,
+            expiresIn: '15m'
         });
         const refreshToken = this.jwtService.sign(refreshPayload, {
-            secret: 'myRefreshKey',
+            secret: process.env.JWT_REFRESH_SECRET,
             expiresIn: '7d'
         });
 
@@ -59,12 +59,12 @@ export class AuthService {
 
         try {
             decoded = this.jwtService.verify(refreshToken, {
-                secret: 'myRefreshKey'
+                secret: process.env.JWT_REFRESH_SECRET
             });
         } catch (err) {
             if (err.name === 'TokenExpiredError') {
                 const tokenExpired = this.jwtService.verify(refreshToken, {
-                    secret: 'myRefreshKey',
+                    secret: process.env.JWT_REFRESH_SECRET,
                     ignoreExpiration: true
                 });
                 const seq = tokenExpired.seq;
@@ -92,11 +92,11 @@ export class AuthService {
         const newRefreshPayload = { seq: user.seq };
 
         const newAccessToken = this.jwtService.sign(newAccessPayload, {
-            secret: 'mySecretkey',
-            expiresIn: '10m'
+            secret: process.env.JWT_ACCESS_SECRET,
+            expiresIn: '15m'
         })
         const newRefreshToken = this.jwtService.sign(newRefreshPayload, {
-            secret: 'myRefreshKey',
+            secret: process.env.JWT_REFRESH_SECRET,
             expiresIn: '7d'
         })
 
