@@ -65,3 +65,10 @@ export class GetMyInfoDto {
     @IsNotEmpty({ message: '비밀번호를 입력해주세요.' })
     userPassword: string;
 }
+
+export class DeleteAccountDto {
+
+    @IsString()
+    @IsNotEmpty({ message: '비밀번호를 입력해주세요.' })
+    currentPassword: string;
+}

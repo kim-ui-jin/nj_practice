@@ -9,7 +9,7 @@ export class User {
     @Column({ type: 'varchar', length: 10, nullable: false, unique: true })
     userId: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: false })
+    @Column({ type: 'varchar', length: 255, nullable: false, select: false })
     userPassword: string;
 
     @Column({ type: 'varchar', length: 20, nullable: false })
@@ -21,6 +21,6 @@ export class User {
     @Column({ type: 'varchar', length: 20, nullable: false, unique: true })
     userPhone: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: true })
+    @Column({ type: 'varchar', length: 255, nullable: true, select: false })
     refreshTokenHash: string | null;
 }

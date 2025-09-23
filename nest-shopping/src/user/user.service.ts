@@ -2,7 +2,7 @@ import { BadRequestException, Get, Injectable, NotFoundException, UnauthorizedEx
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
 import { Repository } from 'typeorm';
-import { ChangePasswordDto, CreateUserDto } from './dto/user.dto';
+import { ChangePasswordDto, CreateUserDto, DeleteAccountDto } from './dto/user.dto';
 import * as bcrypt from 'bcrypt';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
 type SafeUser = Omit<User, 'userPassword'>;
@@ -47,7 +47,10 @@ export class UserService {
     // 비밀번호 변경
     async changePassword(seq: number, changePasswordDto: ChangePasswordDto): Promise<BaseResponseDto> {
 
-        const user = await this.userRepository.findOne({ where: { seq } });
+        const user = await this.userRepository.findOne({
+            where: { seq },
+            select: { seq: true, userPassword: true },
+        });
         if (!user) throw new NotFoundException();
 
         const comparedPassword = await bcrypt.compare(changePasswordDto.currentPassword, user.userPassword);
@@ -73,31 +76,37 @@ export class UserService {
     // 내 정보조회
     async getMyInfo(seq: number, currentPassword: string): Promise<GetMyInfo> {
 
-        const user = await this.userRepository.findOne({ where: { seq } });
+        const user = await this.userRepository.findOne({
+            where: { seq },
+            select: { userId: true, userName: true, userEmail: true, userPhone: true, userPassword: true }
+        });
         if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
         const comparedPassword = await bcrypt.compare(currentPassword, user.userPassword);
-        if (!comparedPassword) throw new UnauthorizedException('비밀번호가 올바르지 않습니다');
+        if (!comparedPassword) throw new UnauthorizedException('비밀번호가 올바르지 않습니다.');
 
-        const { userPassword, refreshTokenHash, seq: _seq, ...safe } = user;
+        const { userPassword, ...safe } = user
 
-        return safe as GetMyInfo;
+        return safe;
     }
 
-    // 노출 가능한 공개 필드만 선택 조회
-    async findPublicBySeq(seq: number) {
-        return this.userRepository.findOne({
-            where: { seq },
-            select: { seq: true, userId: true, userEmail: true, userPhone: true }
-        });
-    }
+    // 회원 탈퇴
+    async deleteMe(seq: number, deleteAccountDto: DeleteAccountDto): Promise<BaseResponseDto> {
 
-    // 비밀번호 비교용
-    async findWithPasswordBySeq(seq: number) {
-        return this.userRepository.findOne({
+        const user = await this.userRepository.findOne({
             where: { seq },
-            select: { seq: true, userPassword: true }
-        });
+            select: { seq: true, userPassword: true, refreshTokenHash: true }
+        })
+        if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+
+        const comparedPassword = await bcrypt.compare(deleteAccountDto.currentPassword, user.userPassword);
+        if (!comparedPassword) throw new UnauthorizedException('비밀번호가 올바르지 않습니다.');
+
+        await this.userRepository.update(seq, { refreshTokenHash: null });
+
+        await this.userRepository.delete(seq);
+
+        return { success: true, message: '회원탈퇴가 완료되었습니다.' };
     }
 
 }

@@ -21,7 +21,8 @@ export class AuthService {
     async login(loginUserDto: LoginUserDto): Promise<{ accessToken: string, refreshToken: string }> {
 
         const user = await this.userRepository.findOne({
-            where: { userId: loginUserDto.userId }
+            where: { userId: loginUserDto.userId },
+            select: { seq: true, userId: true, userName: true, userPassword: true }
         });
         if (!user) {
             throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
@@ -79,7 +80,10 @@ export class AuthService {
         const userSeq = decoded.seq;
         if (!userSeq) throw new UnauthorizedException('리프레시 토큰에 사용자 식별자가 없습니다')
 
-        const user = await this.userRepository.findOne({ where: { seq: userSeq } });
+        const user = await this.userRepository.findOne({
+            where: { seq: userSeq },
+            select: { seq: true, userId: true, userName: true, refreshTokenHash: true }
+        });
         if (!user?.refreshTokenHash) throw new UnauthorizedException('등록된 리프레시 토큰이 없습니다.');
 
         const matched = await bcrypt.compare(refreshToken, user.refreshTokenHash)
