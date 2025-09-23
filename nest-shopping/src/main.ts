@@ -1,13 +1,15 @@
 import 'dotenv/config';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const port = configService.getOrThrow<number>('APP_PORT');
+
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)))
 
   // Global ValidationPipe 적용
   app.useGlobalPipes(new ValidationPipe({

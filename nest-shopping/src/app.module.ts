@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { typeOrmConfig } from './config/typeorm.config';
 import { envValidationSchema } from './config/validation.schema';
+import { ProductsModule } from './products/products.module';
 
 @Module({
   imports: [
@@ -20,7 +21,8 @@ import { envValidationSchema } from './config/validation.schema';
       useFactory: typeOrmConfig,
     }),
     UserModule,
-    AuthModule],
+    AuthModule,
+    ProductsModule],
   controllers: [AppController],
   providers: [AppService],
 })
