@@ -2,7 +2,8 @@ import { Transform } from "class-transformer";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import tz from "dayjs/plugin/timezone"
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { User } from "src/user/entity/user.entity";
 dayjs.extend(utc);
 dayjs.extend(tz);
 
@@ -41,5 +42,9 @@ export class Product {
         { toPlainOnly: true }
     )
     updatedAt: Date;
+
+    @ManyToOne(() => User, { nullable: false })
+    @JoinColumn({ name: 'created_by_user_id', referencedColumnName: 'userId' })
+    creator: User;
 
 }
