@@ -1,9 +1,9 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/product.dto';
 import { JwtAuthGuard } from 'src/auth/jwt/jwt.guard';
 import { extname } from 'path';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 
 function filenameFactory(req, file, cb) {
@@ -25,24 +25,24 @@ export class ProductsController {
     // 상품 등록
     @Post()
     @UseGuards(JwtAuthGuard)
-    @UseInterceptors(FileInterceptor('image', {
+    @UseInterceptors(FilesInterceptor('images', 10, {
         storage: diskStorage({
             destination: 'uploads/products',
             filename: filenameFactory,
         }),
         fileFilter: imageFileFilter,
-        limits: { fileSize: 5 * 1024 * 1024 },
+        limits: { fileSize: 5 * 1024 * 1024, files: 10 },
     }))
     async createProduct(
         @Req() req: any,
         @Body() createProductDto: CreateProductDto,
-        @UploadedFile() file?: Express.Multer.File,
+        @UploadedFiles() files: Express.Multer.File[] = [],
     ) {
 
-        const imageUrl = file ? `/static/products/${file.filename}` : null;
+        const imageUrls = files.map(file => `/static/products/${file.filename}`);
         const userId = req.user.userId;
 
-        return this.productsService.createProduct(createProductDto, userId, imageUrl);
+        return this.productsService.createProduct(createProductDto, userId, imageUrls);
     }
 
     // 내가 등록한 상품 조회

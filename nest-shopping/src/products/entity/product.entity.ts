@@ -30,8 +30,8 @@ export class Product {
     description: string | null;
 
     // 이미지
-    @Column({ type: 'varchar', length: 500, nullable: true})
-    imageUrl?: string | null;
+    @Column({ type: 'json', nullable: true })
+    imageUrls?: string[] | null;
 
     @CreateDateColumn()
     @Transform(

@@ -17,7 +17,7 @@ export class ProductsService {
     async createProduct(
         createProductDto: CreateProductDto,
         userId: string,
-        imageUrl: string | null,
+        imageUrls: string[] | null,
     ): Promise<Product> {
 
         const product = this.productRepository.create({
@@ -25,7 +25,7 @@ export class ProductsService {
             price: createProductDto.price,
             stockQuantity: createProductDto.stockQuantity ?? 0,
             description: createProductDto.description ?? null,
-            imageUrl,
+            imageUrls,
             creator: { userId }
         })
 
