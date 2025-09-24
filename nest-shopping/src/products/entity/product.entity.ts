@@ -14,11 +14,11 @@ export class Product {
     seq: number;
 
     // 상품명
-    @Column({ type: 'varchar', length: 120 })
+    @Column({ type: 'varchar', length: 120, nullable: false })
     name: string;
 
     // 가격
-    @Column({ type: 'int', unsigned: true })
+    @Column({ type: 'int', unsigned: true, nullable: false })
     price: number;
 
     // 재고 수량
@@ -28,6 +28,10 @@ export class Product {
     // 설명
     @Column({ type: 'text', nullable: true })
     description: string | null;
+
+    // 이미지
+    @Column({ type: 'varchar', length: 500, nullable: true})
+    imageUrl?: string | null;
 
     @CreateDateColumn()
     @Transform(

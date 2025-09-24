@@ -14,13 +14,18 @@ export class ProductsService {
     ) { }
 
     // 상품 등록
-    async createProduct(createProductDto: CreateProductDto, userId: string): Promise<Product> {
+    async createProduct(
+        createProductDto: CreateProductDto,
+        userId: string,
+        imageUrl: string | null,
+    ): Promise<Product> {
 
         const product = this.productRepository.create({
             name: createProductDto.name,
             price: createProductDto.price,
             stockQuantity: createProductDto.stockQuantity ?? 0,
             description: createProductDto.description ?? null,
+            imageUrl,
             creator: { userId }
         })
 
@@ -41,10 +46,16 @@ export class ProductsService {
         return product;
     }
 
-    // 상품 삭제
-    async removeProduct(seq: number): Promise<BaseResponseDto> {
+    // 내가 등록한 상품 삭제
+    async removeProduct(seq: number, meUserId: string): Promise<BaseResponseDto> {
 
-        const result = await this.productRepository.delete({ seq });
+        const result = await this.productRepository
+            .createQueryBuilder()
+            .delete()
+            .from(Product)
+            .where('seq = :seq AND created_by_user_id = :uid', { seq, uid: meUserId })
+            .execute();
+
         if (!result.affected) throw new NotFoundException('상품을 찾을 수 없습니다.');
 
         return { success: true, message: '상품을 등록 취소했습니다.' }
@@ -52,11 +63,15 @@ export class ProductsService {
     }
 
     // 내가 등록한 상품 조회
-    async findMineByUserId(userId: string) {
-        return this.productRepository.find({
+    async findMineByUserId(userId: string): Promise<Product[]> {
+        const meProducts = await this.productRepository.find({
             where: { creator: { userId } },
             order: { seq: 'DESC' }
         });
+
+        if (meProducts.length === 0) throw new NotFoundException('등록한 상품이 없습니다.')
+
+        return meProducts;
     }
 
 }

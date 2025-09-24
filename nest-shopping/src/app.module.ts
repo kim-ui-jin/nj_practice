@@ -8,9 +8,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { typeOrmConfig } from './config/typeorm.config';
 import { envValidationSchema } from './config/validation.schema';
 import { ProductsModule } from './products/products.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 @Module({
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/static'
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env'],
@@ -26,4 +32,4 @@ import { ProductsModule } from './products/products.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
