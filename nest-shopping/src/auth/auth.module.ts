@@ -7,12 +7,15 @@ import { User } from 'src/user/entity/user.entity';
 import { UserService } from 'src/user/user.service';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt/jwt.strategy';
+import { UserModule } from 'src/user/user.module';
+import { UserAuthority } from 'src/user/entity/user-authority.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]), // User 엔티티를 AuthModule에서 사용 가능하도록 설정
+    TypeOrmModule.forFeature([User, UserAuthority]), // User 엔티티를 AuthModule에서 사용 가능하도록 설정
     JwtModule.register({ }),
-    PassportModule
+    PassportModule,
+    UserModule
   ],
   exports: [JwtModule], // 다른 모듈에서 JwtModule과 사용할 수 있도록 내보냄
   providers: [AuthService, UserService, JwtStrategy],

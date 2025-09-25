@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { UserAuthority } from "./user-authority.entity";
 
 @Entity('users')
 export class User {
@@ -18,8 +19,14 @@ export class User {
     @Column({ type: 'varchar', length: 50, nullable: false, unique: true })
     userEmail: string;
 
-    @Column({ type: 'varchar', length: 20, nullable: false, unique: true })
+    @Column({ type: 'varchar', length: 20, nullable: false })
     userPhone: string;
+
+    @OneToMany(() => UserAuthority, (ua) => ua.user, {
+        eager: true,
+        cascade: ['insert'],
+    })
+    authorities?: UserAuthority[];
 
     @Column({ type: 'varchar', length: 255, nullable: true, select: false })
     refreshTokenHash: string | null;

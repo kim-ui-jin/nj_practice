@@ -1,17 +1,25 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, UploadedFile, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/product.dto';
-import { JwtAuthGuard } from 'src/auth/jwt/jwt.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { extname } from 'path';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 
-function filenameFactory(req, file, cb) {
+function filenameFactory(
+    req: Express.Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, filename: string) => void,
+) {
     const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, unique + extname(file.originalname));
 }
 
-function imageFileFilter(req, file, cb) {
+function imageFileFilter(
+    req: Express.Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, accpptFile: boolean) => void,
+) {
     if (!file.mimetype.startsWith('image/')) {
         return cb(new Error('이미지 파일만 업로드 가능합니다.'), false);
     }

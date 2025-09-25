@@ -1,7 +1,10 @@
 import { Body, Controller, Delete, Get, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { ChangePasswordDto, CheckIdQueryDto, CreateUserDto, DeleteAccountDto, GetMyInfoDto } from './dto/user.dto';
-import { JwtAuthGuard } from 'src/auth/jwt/jwt.guard';
+import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/role.decorator';
+import { RoleType } from 'src/auth/enums/role-type.enum';
 
 @Controller('users')
 export class UserController {
@@ -23,6 +26,8 @@ export class UserController {
     @Get('check-id')
     async checkUserId(@Query() checkIdQueryDto: CheckIdQueryDto) {
         const exists = await this.userService.existsByUserId(checkIdQueryDto.userId);
+
+        // 수정
         return {
             available: !exists,
             message: !exists ? '사용 가능합니다.' : '사용 불가능합니다.'
@@ -41,6 +46,13 @@ export class UserController {
     async deleteMetadata(@Req() req: any, @Body() deleteAccountDto: DeleteAccountDto) {
         const user = req.user;
         return this.userService.deleteMe(user.seq, deleteAccountDto);
+    }
+
+    @Get()
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(RoleType.ADMIN)
+    findAll() {
+        return this.userService.findAll();
     }
 
 }
