@@ -47,8 +47,8 @@ export class Product {
     )
     updatedAt: Date;
 
-    @ManyToOne(() => User, { nullable: false })
-    @JoinColumn({ name: 'created_by_user_id', referencedColumnName: 'userId' })
+    @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: false })
+    @JoinColumn({ name: 'created_by_user_seq', referencedColumnName: 'seq' })
     creator: User;
 
 }

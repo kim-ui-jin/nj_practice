@@ -14,31 +14,24 @@ export class UserController {
 
     @Post('signup')
     async signup(@Body() createUserDto: CreateUserDto) {
-        return await this.userService.signup(createUserDto);
+        return this.userService.signup(createUserDto);
     }
 
     @Patch('change-password')
     @UseGuards(JwtAuthGuard)
     async changeMyPassword(@Req() req: any, @Body() changePasswordDto: ChangePasswordDto) {
-        return await this.userService.changePassword(req.user.seq, changePasswordDto);
+        return this.userService.changePassword(req.user.seq, changePasswordDto);
     }
 
     @Get('check-id')
     async checkUserId(@Query() checkIdQueryDto: CheckIdQueryDto) {
-        const exists = await this.userService.existsByUserId(checkIdQueryDto.userId);
-
-        // 수정
-        return {
-            available: !exists,
-            message: !exists ? '사용 가능합니다.' : '사용 불가능합니다.'
-        }
+        return this.userService.existsByUserId(checkIdQueryDto.userId);
     }
 
-    @Get('me')
+    @Post('me')
     @UseGuards(JwtAuthGuard)
     async getMyInfo(@Req() req: any, @Body() getMyInfoDto: GetMyInfoDto) {
-        const data = await this.userService.getMyInfo(req.user.seq, getMyInfoDto.userPassword);
-        return data;
+        return this.userService.getMyInfo(req.user.seq, getMyInfoDto.userPassword);
     }
 
     @Delete('withdraw')

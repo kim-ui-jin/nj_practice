@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entity/product.entity';
 import { Repository } from 'typeorm';
@@ -16,7 +16,7 @@ export class ProductsService {
     // 상품 등록
     async createProduct(
         createProductDto: CreateProductDto,
-        userId: string,
+        seq: number,
         imageUrls: string[] | null,
     ): Promise<Product> {
 
@@ -26,10 +26,15 @@ export class ProductsService {
             stockQuantity: createProductDto.stockQuantity ?? 0,
             description: createProductDto.description ?? null,
             imageUrls,
-            creator: { userId }
+            creator: { seq }
         })
 
-        return await this.productRepository.save(product);
+        try {
+            return await this.productRepository.save(product);
+        } catch (e) {
+            throw new InternalServerErrorException('상품 등록 중 오류가 발생했습니다.')
+        }
+
     }
 
     // 전체 조회
@@ -47,29 +52,34 @@ export class ProductsService {
     }
 
     // 내가 등록한 상품 삭제
-    async removeProduct(seq: number, meUserId: string): Promise<BaseResponseDto> {
+    async removeProduct(seq: number, meSeq: number): Promise<BaseResponseDto> {
 
-        const result = await this.productRepository
-            .createQueryBuilder()
-            .delete()
-            .from(Product)
-            .where('seq = :seq AND created_by_user_id = :uid', { seq, uid: meUserId })
-            .execute();
+        try {
 
-        if (!result.affected) throw new NotFoundException('상품을 찾을 수 없습니다.');
+            const result = await this.productRepository
+                .createQueryBuilder()
+                .delete()
+                .from(Product)
+                .where('seq = :seq AND created_by_user_seq = :useq', { seq, useq: meSeq })
+                .execute();
 
-        return { success: true, message: '상품을 등록 취소했습니다.' }
+            if (!result.affected) throw new NotFoundException('상품을 찾을 수 없습니다.');
+
+            return { success: true, message: '상품을 등록 취소했습니다.' }
+
+        } catch (e) {
+            throw new InternalServerErrorException('상품 삭제 처리 중 오류가 발생했습니다.');
+        }
 
     }
 
     // 내가 등록한 상품 조회
-    async findMineByUserId(userId: string): Promise<Product[]> {
+    async findMineByUserId(seq: number): Promise<Product[]> {
+
         const meProducts = await this.productRepository.find({
-            where: { creator: { userId } },
+            where: { creator: { seq } },
             order: { seq: 'DESC' }
         });
-
-        if (meProducts.length === 0) throw new NotFoundException('등록한 상품이 없습니다.')
 
         return meProducts;
     }

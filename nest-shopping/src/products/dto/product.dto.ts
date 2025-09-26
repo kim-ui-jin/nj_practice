@@ -9,7 +9,7 @@ export class CreateProductDto {
 
     @Type(() => Number)
     @IsInt()
-    @Min(0)
+    @Min(1)
     @IsNotEmpty({ message: '가격을 입력해 주세요.' })
     price: number;
 

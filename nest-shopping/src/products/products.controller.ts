@@ -48,16 +48,16 @@ export class ProductsController {
     ) {
 
         const imageUrls = files.map(file => `/static/products/${file.filename}`);
-        const userId = req.user.userId;
+        const userSeq = req.user.seq;
 
-        return this.productsService.createProduct(createProductDto, userId, imageUrls);
+        return this.productsService.createProduct(createProductDto, userSeq, imageUrls);
     }
 
     // 내가 등록한 상품 조회
     @Get('mine')
     @UseGuards(JwtAuthGuard)
     async findMine(@Req() req: any) {
-        return this.productsService.findMineByUserId(req.user.userId);
+        return this.productsService.findMineByUserId(req.user.seq);
     }
 
     // 전체 조회
@@ -76,9 +76,8 @@ export class ProductsController {
     @Delete(':seq')
     @UseGuards(JwtAuthGuard)
     async removeProduct(@Param('seq') seq: number, @Req() req: any) {
-        const meUserId = req.user.userId;
-        return this.productsService.removeProduct(seq, meUserId);
+        const meSeq = req.user.seq;
+        return this.productsService.removeProduct(seq, meSeq);
     }
-
 
 }
