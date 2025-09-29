@@ -48,4 +48,11 @@ export class UserController {
         return this.userService.findAll();
     }
 
+    @Post('me/roles/seller')
+    @UseGuards(JwtAuthGuard)
+    async registerSeller(@Req() req: any) {
+        const user = req.user;
+        return this.userService.registerSeller(user.seq);
+    }
+
 }

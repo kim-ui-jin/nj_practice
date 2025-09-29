@@ -1,10 +1,13 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, Req, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ProductsService } from './products.service';
-import { CreateProductDto } from './dto/product.dto';
+import { CreateProductDto, ProductCardDto, SearchByNameDto } from './dto/product.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { extname } from 'path';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
+import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { Roles } from 'src/auth/decorators/role.decorator';
+import { RoleType } from 'src/auth/enums/role-type.enum';
 
 function filenameFactory(
     req: Express.Request,
@@ -32,7 +35,8 @@ export class ProductsController {
 
     // 상품 등록
     @Post()
-    @UseGuards(JwtAuthGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(RoleType.SELLER)
     @UseInterceptors(FilesInterceptor('images', 10, {
         storage: diskStorage({
             destination: 'uploads/products',
@@ -58,6 +62,11 @@ export class ProductsController {
     @UseGuards(JwtAuthGuard)
     async findMine(@Req() req: any) {
         return this.productsService.findMineByUserId(req.user.seq);
+    }
+
+    @Get('search')
+    async searchByName(@Query() searchByNameDto: SearchByNameDto): Promise<ProductCardDto[]> {
+        return this.productsService.searchByName(searchByNameDto)
     }
 
     // 전체 조회

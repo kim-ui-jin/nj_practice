@@ -1,9 +1,12 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entity/product.entity';
-import { Repository } from 'typeorm';
-import { CreateProductDto } from './dto/product.dto';
+import { Like, Repository } from 'typeorm';
+import { CreateProductDto, ProductCardDto, SearchByNameDto } from './dto/product.dto';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
+import { instanceToPlain } from 'class-transformer';
+
+const escapeLike = (s: string) => s.replace(/[%_]/g, (ch) => '\\' + ch);
 
 @Injectable()
 export class ProductsService {
@@ -84,4 +87,22 @@ export class ProductsService {
         return meProducts;
     }
 
+    // 검색어로 상품 조회
+    async searchByName(searchByNameDto: SearchByNameDto): Promise<ProductCardDto[]> {
+
+        const keyword = searchByNameDto.keyword.trim();
+        if (!keyword) throw new BadRequestException('검색어를 입력하세요.');
+
+        const items = await this.productRepository.find({
+            where: { name: Like(`%${escapeLike(keyword)}%`) },
+            order: { name: 'ASC' },
+        });
+        if (items.length === 0) throw new NotFoundException('검색 결과가 없습니다.');
+
+        return items.map((product) => {
+            const base = ProductCardDto.fromEntity(product);
+            const plain = instanceToPlain(product) as any;
+            return { ...base, createdAt: plain.createdAt };
+        });
+    }
 }

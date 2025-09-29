@@ -6,6 +6,7 @@ import { ChangePasswordDto, CreateUserDto, DeleteAccountDto } from './dto/user.d
 import * as bcrypt from 'bcrypt';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
 import { UserAuthority } from './entity/user-authority.entity';
+import { RoleType } from 'src/auth/enums/role-type.enum';
 type SafeUser = Omit<User, 'userPassword'>;
 type GetMyInfo = Pick<User, 'userId' | 'userName' | 'userEmail' | 'userPhone'>
 
@@ -34,9 +35,7 @@ export class UserService {
         const user = this.userRepository.create({
             ...createUserDto,
             userPassword: hashedPassword,
-            authorities: [
-                this.userRepository.manager.create(UserAuthority, { authorityName: 'USER' }),
-            ],
+            authorities: [{ authorityName: 'USER' }],
         });
 
         try {
@@ -188,6 +187,34 @@ export class UserService {
             }
             throw new InternalServerErrorException('유저 목록 조회 중 오류가 발생했습니다.')
 
+        }
+
+    }
+
+    // SELLER 권한 등록
+    async registerSeller(seq: number): Promise<BaseResponseDto> {
+
+        const user = await this.userRepository.findOne({ where: { seq } });
+        if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+
+        const exists = await this.userAuthorityRepository.exists({
+            where: { user: { seq }, authorityName: RoleType.SELLER },
+        });
+        if (exists) throw new ConflictException('이미 셀러 권한이 부여되어 있습니다.');
+
+        const userAuthority = this.userAuthorityRepository.create({
+            authorityName: RoleType.SELLER,
+            user: { seq },
+        });
+
+        try {
+
+            await this.userAuthorityRepository.save(userAuthority);
+
+            return { success: true, message: '셀러 권한이 등록되었습니다.' };
+
+        } catch (e) {
+            throw new InternalServerErrorException('셀러 권한 등록 중 오류가 발생했습니다.');
         }
 
     }
