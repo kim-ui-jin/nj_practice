@@ -1,5 +1,5 @@
-import { Type } from "class-transformer";
-import { IsInt, IsNotEmpty, IsOptional, IsString, Min, MinLength } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min, MinLength } from "class-validator";
 import { Product } from "../entity/product.entity";
 
 export class CreateProductDto {
@@ -29,7 +29,21 @@ export class SearchByNameDto {
 
     @IsString()
     @MinLength(1, { message: '검색어를 입력하세요.' })
+    @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
     keyword: string;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    page: number = 1;
+
+    @IsOptional()
+    @Type(() => Number)
+    @IsInt()
+    @Min(1)
+    @Max(100)
+    limit: number = 12;
 }
 
 export class ProductCardDto {
@@ -41,7 +55,7 @@ export class ProductCardDto {
     inStock: boolean;
     createdAt: string;
 
-    static fromEntity(product: Product): ProductCardDto {
+    static fromEntity(product: Product, createdAt: string): ProductCardDto {
         return {
             id: product.seq,
             name: product.name,
@@ -49,6 +63,7 @@ export class ProductCardDto {
             thumbnailUrl: product.imageUrls?.[0] ?? null,
             shortDescription: product.description?.slice(0, 80) ?? null,
             inStock: (product.stockQuantity ?? 0) > 0,
-        } as any;
+            createdAt,
+        };
     }
 }

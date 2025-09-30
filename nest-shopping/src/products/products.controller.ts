@@ -65,7 +65,7 @@ export class ProductsController {
     }
 
     @Get('search')
-    async searchByName(@Query() searchByNameDto: SearchByNameDto): Promise<ProductCardDto[]> {
+    async searchByName(@Query() searchByNameDto: SearchByNameDto) {
         return this.productsService.searchByName(searchByNameDto)
     }
 
