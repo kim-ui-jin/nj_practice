@@ -8,6 +8,7 @@ import { QueryFailedError, Repository } from 'typeorm';
 import { JwtPayload } from './jwt/payload.interface';
 import * as bcrypt from 'bcrypt';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
         @InjectRepository(User) private userRepository: Repository<User>,
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
+        private readonly configService: ConfigService,
     ) { }
 
     // 로그인
@@ -39,11 +41,11 @@ export class AuthService {
             const refreshPayload = { seq: user.seq };
 
             const accessToken = this.jwtService.sign(accessPayload, {
-                secret: process.env.JWT_ACCESS_SECRET,
+                secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
                 expiresIn: '15m'
             });
             const refreshToken = this.jwtService.sign(refreshPayload, {
-                secret: process.env.JWT_REFRESH_SECRET,
+                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
                 expiresIn: '7d'
             });
 
@@ -72,12 +74,12 @@ export class AuthService {
 
         try {
             decoded = this.jwtService.verify(refreshToken, {
-                secret: process.env.JWT_REFRESH_SECRET
+                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET')
             });
         } catch (e) {
             if (e.name === 'TokenExpiredError') {
                 const tokenExpired = this.jwtService.verify(refreshToken, {
-                    secret: process.env.JWT_REFRESH_SECRET,
+                    secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
                     ignoreExpiration: true
                 });
                 const seq = tokenExpired.seq;
@@ -108,11 +110,11 @@ export class AuthService {
         const newRefreshPayload = { seq: user.seq };
 
         const newAccessToken = this.jwtService.sign(newAccessPayload, {
-            secret: process.env.JWT_ACCESS_SECRET,
+            secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
             expiresIn: '15m'
         })
         const newRefreshToken = this.jwtService.sign(newRefreshPayload, {
-            secret: process.env.JWT_REFRESH_SECRET,
+            secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
             expiresIn: '7d'
         })
 

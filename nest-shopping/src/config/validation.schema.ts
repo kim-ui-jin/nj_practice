@@ -10,4 +10,6 @@ export const envValidationSchema = Joi.object({
     DB_DATABASE: Joi.string().required(),
     DB_SYNC: Joi.boolean().truthy('true').falsy('false').default(false),
     DB_LOGGING: Joi.boolean().truthy('true').falsy('false').default(true),
+    JWT_ACCESS_SECRET: Joi.string().required(),
+    JWT_REFRESH_SECRET: Joi.string().required(),
 });

@@ -10,13 +10,13 @@ export class User {
     @Column({ type: 'varchar', length: 10, nullable: false, unique: true })
     userId: string;
 
-    @Column({ type: 'varchar', length: 255, nullable: false, select: false })
+    @Column({ type: 'char', length: 60, nullable: false, select: false })
     userPassword: string;
 
     @Column({ type: 'varchar', length: 20, nullable: false })
     userName: string;
 
-    @Column({ type: 'varchar', length: 50, nullable: false, unique: true })
+    @Column({ type: 'varchar', length: 255, nullable: false, unique: true })
     userEmail: string;
 
     @Column({ type: 'varchar', length: 20, nullable: false })
@@ -28,6 +28,9 @@ export class User {
     })
     authorities?: UserAuthority[];
 
-    @Column({ type: 'varchar', length: 255, nullable: true, select: false })
+    @Column({ type: 'char', length: 60, nullable: true, select: false })
     refreshTokenHash: string | null;
+
+    @Column({ type: 'varchar', length: 255, nullable: false })
+    userAddress: string;
 }

@@ -1,4 +1,11 @@
+import { Transform } from "class-transformer";
 import { IsEmail, IsNotEmpty, IsString, Matches, MaxLength, MinLength } from "class-validator";
+
+export const Trim = () =>
+    Transform(({ value }) => (typeof value === 'string' ? value.trim() : value));
+
+export const TrimLower = () =>
+    Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value));
 
 export class CreateUserDto {
 
@@ -17,6 +24,10 @@ export class CreateUserDto {
     @IsString()
     @IsNotEmpty({ message: '이름은 비어 있을 수 없습니다.' })
     userName: string;
+
+    @IsString()
+    @IsNotEmpty({ message: '주소는 비어 있을 수 없습니다.' })
+    userAddress: string;
 
     @IsEmail({}, { message: '이메일 형식이 올바르지 않습니다.' })
     @IsNotEmpty({ message: '이메일은 비어 있을 수 없습니다.' })

@@ -39,14 +39,11 @@ export class UserService {
         });
 
         try {
-
             const saved = await this.userRepository.save(user);
-
             // 비밀번호 제거
-            const { userPassword, ...safe } = saved as User;
+            const { userPassword, ...safe } = saved;
 
-            return { success: true, message: '회원가입 성공', data: safe as SafeUser };
-
+            return { success: true, message: '회원가입 성공', data: safe };
         } catch (e) {
             throw new InternalServerErrorException('회원가입 처리 중 오류가 발생했습니다.');
         }
@@ -172,21 +169,17 @@ export class UserService {
     async findAll(): Promise<BaseResponseDto<SafeUser[]>> {
 
         try {
-
             const users = await this.userRepository.find();
             return {
                 success: true,
                 message: users.length ? '유저 전체 조회 성공' : '유저가 없습니다.',
                 data: users as SafeUser[],
             }
-
         } catch (e) {
-
             if (e instanceof QueryFailedError) {
                 throw new InternalServerErrorException('유저 목록 조회 중 데이터 베이스 오류가 발생했습니다.')
             }
             throw new InternalServerErrorException('유저 목록 조회 중 오류가 발생했습니다.')
-
         }
 
     }
@@ -208,11 +201,8 @@ export class UserService {
         });
 
         try {
-
             await this.userAuthorityRepository.save(userAuthority);
-
             return { success: true, message: '셀러 권한이 등록되었습니다.' };
-
         } catch (e) {
             throw new InternalServerErrorException('셀러 권한 등록 중 오류가 발생했습니다.');
         }

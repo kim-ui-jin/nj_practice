@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entity/product.entity';
 import { Repository } from 'typeorm';
-import { CreateProductDto, ProductCardDto, SearchByNameDto } from './dto/product.dto';
+import { AddToCartDto, CreateProductDto, ProductCardDto, SearchByNameDto, UpdateProductDto } from './dto/product.dto';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
 import { instanceToPlain } from 'class-transformer';
+import { ProductCart } from './entity/product-cart.entity';
 
 const escapeLike = (s: string) => s.replace(/[%_]/g, (char) => '\\' + char);
 
@@ -14,8 +15,8 @@ type Paged<T> = { items: T[]; total: number; page: number; limit: number; hasNex
 export class ProductsService {
 
     constructor(
-        @InjectRepository(Product)
-        private readonly productRepository: Repository<Product>
+        @InjectRepository(Product) private readonly productRepository: Repository<Product>,
+        @InjectRepository(ProductCart) private readonly productCartRepository: Repository<ProductCart>
     ) { }
 
     // 상품 등록
@@ -92,11 +93,7 @@ export class ProductsService {
     // 검색어로 상품 조회
     async searchByName(searchByNameDto: SearchByNameDto): Promise<Paged<ProductCardDto>> {
 
-        const keyword = searchByNameDto.keyword.trim();
-        if (!keyword) throw new BadRequestException('검색어를 입력하세요.');
-
-        const page = searchByNameDto.page ?? 1;
-        const limit = searchByNameDto.limit ?? 12;
+        const { keyword, page, limit } = searchByNameDto;
 
         // DB에서 건너뛸 개수 계산 (ex: page=3, limit=12 -> skip=24)
         const skip = (page - 1) * limit;
@@ -119,9 +116,11 @@ export class ProductsService {
             // 건너뛴 뒤 limit개 행만 가져오기
             .take(limit);
 
-        // 현재 페이지의 행들과 전체 개수를 한 번에 가져옴 / getManyAndCount는 [엔티티배열, 총개수] 형태의 튜플을 반환
+        // 현재 페이지의 엔티티 배열과 전체 개수를 한 번에 가져옴 / getManyAndCount는 [엔티티배열, 총개수] 형태의 튜플을 반환
         const [rows, total] = await qb.getManyAndCount();
+        // 전체가 0건이면 에러
         if (total === 0) throw new NotFoundException('검색 결과가 없습니다.');
+        // 결과는 있지만 요청한 페이지 범위를 넘어가면(예: 2페이지가 끝인데 3페이지 요청) 에러
         if (skip >= total) throw new NotFoundException('요청한 페이지가 없습니다.');
 
         const items = rows.map((product) => {
@@ -129,6 +128,87 @@ export class ProductsService {
             return ProductCardDto.fromEntity(product, plain.createdAt);
         });
 
+        // 현재 페이지 아이템들, 전체 개수, 현재 페이지 정보, 다음페이지 존재 여부(현재까지 본 개수 < total)
         return { items, total, page, limit, hasNext: page * limit < total };
     }
+
+    async updateProduct(
+        id: number,
+        userSeq: number,
+        updateProductDto: UpdateProductDto,
+        newImageUrls?: string[] | null,
+    ): Promise<Product> {
+
+        const product = await this.productRepository.findOne({
+            where: { seq: id },
+            relations: { creator: true },
+        });
+        if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
+        if (product.creator.seq !== userSeq) {
+            throw new ForbiddenException('본인이 등록한 상품만 수정할 수 있습니다.');
+        }
+
+        const hasUpdates =
+            updateProductDto.name !== undefined ||
+            updateProductDto.price !== undefined ||
+            updateProductDto.stockQuantity !== undefined ||
+            updateProductDto.description !== undefined ||
+            updateProductDto.imageUrls !== undefined ||
+            newImageUrls !== undefined;
+        if (!hasUpdates) throw new BadRequestException('수정할 값이 없습니다.');
+
+        if (updateProductDto.name !== undefined) product.name = updateProductDto.name;
+        if (updateProductDto.price !== undefined) product.price = updateProductDto.price;
+        if (updateProductDto.stockQuantity !== undefined) product.stockQuantity = updateProductDto.stockQuantity;
+        if (updateProductDto.description !== undefined) product.description = updateProductDto.description;
+        if (newImageUrls !== undefined) {
+            product.imageUrls = newImageUrls;
+        } else if (updateProductDto.imageUrls !== undefined) {
+            product.imageUrls = updateProductDto.imageUrls;
+        }
+
+        try {
+            return await this.productRepository.save(product);
+        } catch (e) {
+            throw new InternalServerErrorException('상품 수정 중 오류가 발생했습니다.')
+        }
+
+    }
+
+    //상품을 장바구니에 담기
+    async addItem(userSeq: number, addToCartDto: AddToCartDto) {
+
+        const { productSeq, quantity } = addToCartDto;
+
+        if (quantity < 1) throw new BadRequestException('수량은 1 이상이어야 합니다.');
+
+        const product = await this.productRepository.findOne({ where: { seq: productSeq } });
+        if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
+        if (product.stockQuantity <= 0) throw new BadRequestException('해당 상품은 품절입니다.');
+
+        const result = await this.productCartRepository
+            .createQueryBuilder()
+            .update(ProductCart)
+            .set({ quantity: () => `quantity + ${quantity}` })
+            .where('user_seq = :userSeq AND product_seq = :productSeq', { userSeq, productSeq })
+            .execute();
+
+        if (result.affected === 0) {
+            await this.productCartRepository.insert({
+                user: { seq: userSeq },
+                product: { seq: productSeq },
+                quantity,
+            });
+        }
+
+        const list = await this.productCartRepository.find({
+            where: { user: { seq: userSeq } },
+            relations: { product: true },
+            order: { seq: 'DESC' },
+        });
+
+        return list
+
+    }
+
 }
