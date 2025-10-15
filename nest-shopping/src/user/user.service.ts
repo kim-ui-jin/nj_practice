@@ -6,7 +6,7 @@ import { ChangePasswordDto, CreateUserDto, DeleteAccountDto } from './dto/user.d
 import * as bcrypt from 'bcrypt';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
 import { UserAuthority } from './entity/user-authority.entity';
-import { RoleType } from 'src/auth/enums/role-type.enum';
+import { RoleType } from 'src/common/enums/role-type.enum';
 type SafeUser = Omit<User, 'userPassword'>;
 type GetMyInfo = Pick<User, 'userId' | 'userName' | 'userEmail' | 'userPhone'>
 

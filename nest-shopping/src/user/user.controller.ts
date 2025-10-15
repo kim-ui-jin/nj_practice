@@ -4,7 +4,7 @@ import { ChangePasswordDto, CheckIdQueryDto, CreateUserDto, DeleteAccountDto, Ge
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/role.decorator';
-import { RoleType } from 'src/auth/enums/role-type.enum';
+import { RoleType } from 'src/common/enums/role-type.enum';
 
 @Controller('users')
 export class UserController {

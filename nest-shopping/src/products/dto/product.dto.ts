@@ -1,11 +1,12 @@
 import { Transform, Type } from "class-transformer";
-import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+import { IsArray, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
 import { Product } from "../entity/product.entity";
+import { ProductStatus } from "src/common/enums/product-status.enum";
 
 export class CreateProductDto {
 
     @IsString()
-    @MaxLength(120, { message: '상품명은 최대 120자까지 가능합니다.' })
+    @MaxLength(100, { message: '상품명은 최대 100자까지 가능합니다.' })
     @IsNotEmpty({ message: '상품명을 입력해 주세요.' })
     name: string;
 
@@ -22,8 +23,22 @@ export class CreateProductDto {
     stockQuantity?: number;
 
     @IsString()
+    @MaxLength(500, { message: '상품 설명은 최대 500자까지 가능합니다.' })
     @IsOptional()
     description?: string;
+
+    @IsOptional()
+    @IsString()
+    thumbnailUrl?: string | null;
+
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    imageUrls?: string[] | null;
+
+    @IsOptional()
+    @IsEnum(ProductStatus, { message: 'status는 ACTIVE 또는 INACTIVE만 가능합니다.' })
+    status?: ProductStatus;
 }
 
 export class SearchByNameDto {
@@ -74,7 +89,7 @@ export class UpdateProductDto {
 
     @IsOptional()
     @IsString()
-    @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+    @MaxLength(100, { message: '상품명은 최대 100자까지 가능합니다.' })
     @IsNotEmpty({ message: '상품명을 입력해주세요.' })
     name?: string;
 
@@ -92,14 +107,10 @@ export class UpdateProductDto {
 
     @IsOptional()
     @IsString()
-    @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+    @MaxLength(500, { message: '설명은 최대 500자까지 가능합니다.' })
     @IsNotEmpty({ message: '설명을 입력해 주세요.' })
     description?: string | null;
 
-    @IsOptional()
-    @IsArray()
-    @IsString({ each: true })
-    imageUrls?: string[] | null;
 }
 
 export class AddToCartDto {
@@ -113,4 +124,17 @@ export class AddToCartDto {
     @IsInt()
     @Min(1)
     quantity: number;
+}
+
+export class UpdateThumbnailDto {
+
+    @IsOptional()
+    @IsString()
+    thumbnailUrl?: string | null;
+}
+
+export class UpdateProductStatusDto {
+
+    @IsEnum(ProductStatus, { message: 'status는 ACTIVE 또는 INACTIVE만 가능합니다.' })
+    status: ProductStatus;
 }

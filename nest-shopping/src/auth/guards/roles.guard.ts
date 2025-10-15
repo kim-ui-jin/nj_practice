@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { RoleType } from "../enums/role-type.enum";
+import { RoleType } from "../../common/enums/role-type.enum";
 import { InjectRepository } from "@nestjs/typeorm";
 import { UserAuthority } from "src/user/entity/user-authority.entity";
 import { In, Repository } from "typeorm";
