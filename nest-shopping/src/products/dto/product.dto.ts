@@ -1,5 +1,5 @@
 import { Transform, Type } from "class-transformer";
-import { IsArray, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
+import { IsArray, IsEnum, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, Max, MaxLength, Min, MinLength } from "class-validator";
 import { Product } from "../entity/product.entity";
 import { ProductStatus } from "src/common/enums/product-status.enum";
 
@@ -117,7 +117,7 @@ export class AddToCartDto {
 
     @Type(() => Number)
     @IsInt()
-    @Min(1)
+    @IsPositive()
     productSeq: number;
 
     @Type(() => Number)
@@ -131,6 +131,14 @@ export class UpdateThumbnailDto {
     @IsOptional()
     @IsString()
     thumbnailUrl?: string | null;
+}
+
+export class UpdateImagesDto {
+
+    @IsOptional()
+    @IsArray()
+    @IsString({ each: true })
+    imageUrls?: string[] | null;
 }
 
 export class UpdateProductStatusDto {

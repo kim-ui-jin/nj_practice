@@ -5,7 +5,6 @@ import { Not, Repository } from 'typeorm';
 import { AddToCartDto, CreateProductDto, ProductCardDto, SearchByNameDto, UpdateProductDto, UpdateProductStatusDto, UpdateThumbnailDto } from './dto/product.dto';
 import { BaseResponseDto } from 'src/common/dto/base_response.dto';
 import { instanceToPlain } from 'class-transformer';
-import { ProductCart } from './entity/product-cart.entity';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 
 const escapeLike = (s: string) => s.replace(/[%_]/g, (char) => '\\' + char);
@@ -17,7 +16,6 @@ export class ProductsService {
 
     constructor(
         @InjectRepository(Product) private readonly productRepository: Repository<Product>,
-        @InjectRepository(ProductCart) private readonly productCartRepository: Repository<ProductCart>
     ) { }
 
     // 상품 등록
@@ -43,6 +41,20 @@ export class ProductsService {
             throw new InternalServerErrorException('상품 등록 중 오류가 발생했습니다.')
         }
 
+    }
+
+    // 상품 썸네일 업로드
+    async uploadThumbnail(file: Express.Multer.File) {
+        if (!file) throw new BadRequestException('썸네일 파일을 첨부하세요.');
+        const thumbnailUrl = `/static/products/thumbnails/${file.filename}`;
+        return thumbnailUrl;
+    }
+
+    // 상품 이미지 업로드
+    async uploadImages(files: Express.Multer.File[]) {
+        if (!files || files.length === 0) throw new BadRequestException('최소 1개 이상의 이미지 파일을 첨부하세요.');
+        const imageUrls = files.map(file => `/static/products/images/${file.filename}`);
+        return imageUrls;
     }
 
     // 전체 조회
@@ -113,7 +125,8 @@ export class ProductsService {
                 'product.stockQuantity',
                 'product.createdAt',
             ])
-            .where("product.name LIKE :keyword", { keyword: `%${escapeLike(keyword)}%` })
+            .where('product.status = :status', { status: ProductStatus.ACTIVE })
+            .andWhere("product.name LIKE :keyword", { keyword: `%${escapeLike(keyword)}%` })
             .orderBy('product.name', 'ASC')
             .addOrderBy('product.seq', 'ASC')
             // 결과에서 앞의 skip개 행을 건너뛰기
@@ -137,6 +150,7 @@ export class ProductsService {
         return { items, total, page, limit, hasNext: page * limit < total };
     }
 
+    // 상품 수정
     async updateProduct(
         id: number,
         userSeq: number,
@@ -165,42 +179,6 @@ export class ProductsService {
 
     }
 
-    //상품을 장바구니에 담기
-    async addItem(userSeq: number, addToCartDto: AddToCartDto) {
-
-        const { productSeq, quantity } = addToCartDto;
-
-        if (quantity < 1) throw new BadRequestException('수량은 1 이상이어야 합니다.');
-
-        const product = await this.productRepository.findOne({ where: { seq: productSeq } });
-        if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
-        if (product.stockQuantity <= 0) throw new BadRequestException('해당 상품은 품절입니다.');
-
-        const result = await this.productCartRepository
-            .createQueryBuilder()
-            .update(ProductCart)
-            .set({ quantity: () => `quantity + ${quantity}` })
-            .where('user_seq = :userSeq AND product_seq = :productSeq', { userSeq, productSeq })
-            .execute();
-
-        if (result.affected === 0) {
-            await this.productCartRepository.insert({
-                user: { seq: userSeq },
-                product: { seq: productSeq },
-                quantity,
-            });
-        }
-
-        const list = await this.productCartRepository.find({
-            where: { user: { seq: userSeq } },
-            relations: { product: true },
-            order: { seq: 'DESC' },
-        });
-
-        return list
-
-    }
-
     // 썸네일 수정
     async updateThumbnail(
         id: number,
@@ -213,6 +191,22 @@ export class ProductsService {
         if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
 
         product.thumbnailUrl = thumbnailUrl;
+
+        return this.productRepository.save(product);
+    }
+
+    // 이미지 수정
+    async updateImages(
+        id: number,
+        userSeq: number,
+        imageUrls: string[] | null,
+    ) {
+        const product = await this.productRepository.findOne({
+            where: { seq: id },
+        })
+        if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
+
+        product.imageUrls = imageUrls;
 
         return this.productRepository.save(product);
     }

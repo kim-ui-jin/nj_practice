@@ -10,6 +10,7 @@ import { envValidationSchema } from './config/validation.schema';
 import { ProductsModule } from './products/products.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { CartModule } from './cart/cart.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { join } from 'path';
     }),
     UserModule,
     AuthModule,
-    ProductsModule],
+    ProductsModule,
+    CartModule],
   controllers: [AppController],
   providers: [AppService],
 })

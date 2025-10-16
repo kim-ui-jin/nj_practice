@@ -1,9 +1,9 @@
 import { User } from "src/user/entity/user.entity";
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Product } from "./product.entity";
+import { Product } from "src/products/entity/product.entity";
 
-@Entity('product_cart')
-export class ProductCart {
+@Entity('cart')
+export class Cart {
 
     @PrimaryGeneratedColumn()
     seq: number;
