@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
-import { AddToCartDto } from './dto/cart.dto';
+import { AddToCartDto, UpdateQuantityDto } from './dto/cart.dto';
 import { CartService } from './cart.service';
 
 @Controller('cart')
@@ -44,6 +44,17 @@ export class CartController {
     async clearCartItems(@Req() req: any) {
         const userSeq = req.user.seq;
         await this.cartService.clearCartItems(userSeq);
+    }
+
+    // 수량 변경
+    @Patch('items')
+    @UseGuards(JwtAuthGuard)
+    async updateQuantity(
+        @Req() req: any,
+        @Body() updateQuantityDto: UpdateQuantityDto,
+    ) {
+        const userSeq = req.user.seq;
+        return this.cartService.updateQuantity(userSeq, updateQuantityDto)
     }
 
 }

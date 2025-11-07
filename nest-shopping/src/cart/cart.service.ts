@@ -1,5 +1,5 @@
 import { BadRequestException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { AddToCartDto } from './dto/cart.dto';
+import { AddToCartDto, UpdateQuantityDto } from './dto/cart.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entity/product.entity';
 import { Repository } from 'typeorm';
@@ -19,19 +19,23 @@ export class CartService {
         const { productSeq, quantity } = addToCartDto;
 
         try {
-            const product = await this.productRepository.findOne({ where: { seq: productSeq } });
+            const product = await this.productRepository.findOne({
+                where: { seq: productSeq },
+                select: { stockQuantity: true },
+            });
             if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
             if (product.stockQuantity <= 0) throw new BadRequestException('해당 상품은 품절입니다.');
-
-            const exist = await this.cartRepository.findOne({
-                where: { user: { seq: userSeq }, product: { seq: productSeq } },
-                select: { seq: true, quantity: true },
-            });
-            if (exist) throw new BadRequestException('이미 장바구니에 해당 상품이 있습니다.');
-
             if (quantity > product.stockQuantity) {
                 throw new BadRequestException('재고 수량을 초과했습니다.');
             }
+
+            const exist = await this.cartRepository.exists({
+                where: {
+                    user: { seq: userSeq },
+                    product: { seq: productSeq }
+                },
+            });
+            if (exist) throw new BadRequestException('이미 장바구니에 해당 상품이 있습니다.');
 
             await this.cartRepository.insert({
                 user: { seq: userSeq },
@@ -62,7 +66,7 @@ export class CartService {
                 'product.name AS name',
                 'product.price AS price',
                 'product.thumbnailUrl AS thumbnailUrl',
-                '(cart.quantity * product.price) AS itemTotal'
+                '(cart.quantity * product.price) AS itemsTotal'
             ])
             .where('cart.user_seq = :userSeq', { userSeq })
             .orderBy('cart.seq', 'DESC')
@@ -73,10 +77,10 @@ export class CartService {
                 name: string;
                 price: number;
                 thumbnailUrl: string | null;
-                itemTotal: number;
+                itemsTotal: number;
             }>();
 
-        const itemsTotal = list.reduce((acc, row) => acc + Number(row.itemTotal), 0);
+        const itemsTotal = list.reduce((acc, row) => acc + Number(row.itemsTotal), 0);
 
         return { list, itemsTotal };
     }
@@ -106,6 +110,46 @@ export class CartService {
             await this.cartRepository.delete({ user: { seq: userSeq } });
         } catch (e) {
             throw new InternalServerErrorException('장바구니 비우기 중 오류가 발생했습니다.');
+        }
+
+    }
+
+    // 수량 변경
+    async updateQuantity(userSeq: number, updateQuantityDto: UpdateQuantityDto) {
+
+        const { productSeq, newQuantity } = updateQuantityDto;
+
+        try {
+            const product = await this.productRepository.findOne({
+                where: { seq: productSeq },
+                select: { stockQuantity: true },
+            });
+            if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
+            if (newQuantity > product.stockQuantity) {
+                throw new BadRequestException('재고 수량을 초과했습니다.');
+            }
+
+            const updated = await this.cartRepository.update(
+                { user: { seq: userSeq }, product: { seq: productSeq } },
+                { quantity: newQuantity },
+            );
+
+            if (!updated.affected) {
+                const exist = await this.cartRepository.exists({
+                    where: {
+                        user: { seq: userSeq },
+                        product: { seq: productSeq }
+                    },
+                });
+                if (!exist) {
+                    throw new NotFoundException('장바구니에 해당 상품이 없습니다.');
+                }
+            }
+
+            return { productSeq, newQuantity, noChange: true };
+        } catch (e) {
+            if (e instanceof HttpException) throw e;
+            throw new InternalServerErrorException('장바구니 수량 변경 중 오류가 발생했습니다.');
         }
 
     }
