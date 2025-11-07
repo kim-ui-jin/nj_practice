@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { AddToCartDto } from './dto/cart.dto';
 import { CartService } from './cart.service';
@@ -11,8 +11,39 @@ export class CartController {
     // 장바구니 담기
     @Post('items')
     @UseGuards(JwtAuthGuard)
-    async addToCart(@Req() req: any, @Body() addToCartDto: AddToCartDto) {
-        return this.cartService.addItem(req.user.seq, addToCartDto);
+    async addToCart(
+        @Req() req: any,
+        @Body() addToCartDto: AddToCartDto,
+    ) {
+        const userSeq = req.user.seq;
+        return this.cartService.addItem(userSeq, addToCartDto);
+    }
+
+    // 장바구니 목록
+    @Get('items')
+    @UseGuards(JwtAuthGuard)
+    async getCartItems(@Req() req: any) {
+        const userSeq = req.user.seq;
+        return this.cartService.getCartItems(userSeq)
+    }
+
+    // 장바구니 상품 삭제
+    @Delete('items/:productSeq')
+    @UseGuards(JwtAuthGuard)
+    async removeCartItem(
+        @Req() req: any,
+        @Param('productSeq') productSeq: number,
+    ) {
+        const userSeq = req.user.seq;
+        return this.cartService.removeCartItem(userSeq, productSeq);
+    }
+
+    // 장바구니 비우기
+    @Delete('items')
+    @UseGuards(JwtAuthGuard)
+    async clearCartItems(@Req() req: any) {
+        const userSeq = req.user.seq;
+        await this.cartService.clearCartItems(userSeq);
     }
 
 }

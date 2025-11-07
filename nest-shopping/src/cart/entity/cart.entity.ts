@@ -12,7 +12,7 @@ export class Cart {
     @JoinColumn({ name: 'user_seq', referencedColumnName: 'seq' })
     user: User;
 
-    @ManyToOne(() => Product, { eager: true, nullable: true })
+    @ManyToOne(() => Product, { onDelete: 'CASCADE', nullable: false })
     @JoinColumn({ name: 'product_seq', referencedColumnName: 'seq' })
     product: Product;
 

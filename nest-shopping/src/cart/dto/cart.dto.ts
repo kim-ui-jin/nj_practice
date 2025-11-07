@@ -10,6 +10,6 @@ export class AddToCartDto {
 
     @Type(() => Number)
     @IsInt()
-    @Min(1)
+    @Min(1, { message: '수량은 1개 이상이어야 합니다.'})
     quantity: number;
 }
