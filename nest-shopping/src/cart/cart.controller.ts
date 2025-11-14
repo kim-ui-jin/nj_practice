@@ -14,7 +14,7 @@ export class CartController {
     async addToCart(
         @Req() req: any,
         @Body() addToCartDto: AddToCartDto,
-    ) {
+    ): Promise<{ productSeq: number; quantity: number }> {
         const userSeq = req.user.seq;
         return this.cartService.addItem(userSeq, addToCartDto);
     }
@@ -33,7 +33,7 @@ export class CartController {
     async removeCartItem(
         @Req() req: any,
         @Param('productSeq') productSeq: number,
-    ) {
+    ): Promise<void> {
         const userSeq = req.user.seq;
         return this.cartService.removeCartItem(userSeq, productSeq);
     }
@@ -41,7 +41,7 @@ export class CartController {
     // 장바구니 비우기
     @Delete('items')
     @UseGuards(JwtAuthGuard)
-    async clearCartItems(@Req() req: any) {
+    async clearCartItems(@Req() req: any): Promise<void> {
         const userSeq = req.user.seq;
         await this.cartService.clearCartItems(userSeq);
     }
@@ -52,7 +52,7 @@ export class CartController {
     async updateQuantity(
         @Req() req: any,
         @Body() updateQuantityDto: UpdateQuantityDto,
-    ) {
+    ): Promise<{ productSeq: number; newQuantity: number; }> {
         const userSeq = req.user.seq;
         return this.cartService.updateQuantity(userSeq, updateQuantityDto)
     }

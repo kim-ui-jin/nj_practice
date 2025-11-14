@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entity/product.entity';
 import { Repository } from 'typeorm';
 import { Cart } from './entity/cart.entity';
+import { CartItem, OrderPreview } from 'src/orders/type/order.type';
 
 @Injectable()
 export class CartService {
@@ -13,8 +14,13 @@ export class CartService {
         @InjectRepository(Cart) private readonly cartRepository: Repository<Cart>,
     ) { }
 
+    // 배송비 계산
+    private calShippingFee(itemsTotal: number): number {
+        return itemsTotal >= 50000 ? 0 : 3500;
+    }
+
     //상품을 장바구니에 담기
-    async addItem(userSeq: number, addToCartDto: AddToCartDto) {
+    async addItem(userSeq: number, addToCartDto: AddToCartDto): Promise<{ productSeq: number; quantity: number }> {
 
         const { productSeq, quantity } = addToCartDto;
 
@@ -52,8 +58,9 @@ export class CartService {
     }
 
     // 장바구니 목록 조회
-    async getCartItems(userSeq: number) {
-        const list = await this.cartRepository
+    async getCartItems(userSeq: number): Promise<OrderPreview> {
+
+        const cartItems: CartItem[] = await this.cartRepository
             .createQueryBuilder('cart')
             // FROM cart AS cart
             // INNER JOIN products AS product
@@ -66,27 +73,38 @@ export class CartService {
                 'product.name AS name',
                 'product.price AS price',
                 'product.thumbnailUrl AS thumbnailUrl',
-                '(cart.quantity * product.price) AS itemsTotal'
+                '(cart.quantity * product.price) AS lineTotal'
             ])
             .where('cart.user_seq = :userSeq', { userSeq })
             .orderBy('cart.seq', 'DESC')
-            .getRawMany<{
-                cartSeq: number;
-                quantity: number;
-                productSeq: number;
-                name: string;
-                price: number;
-                thumbnailUrl: string | null;
-                itemsTotal: number;
-            }>();
+            .getRawMany();
 
-        const itemsTotal = list.reduce((acc, row) => acc + Number(row.itemsTotal), 0);
+        if (cartItems.length === 0) {
+            return {
+                cartItems: [],
+                itemsTotal: 0,
+                shippingFee: 0,
+                orderTotal: 0,
+            };
+        }
 
-        return { list, itemsTotal };
+        // 상품 금액 합계
+        const itemsTotal = cartItems.reduce((acc, row) => acc + Number(row.lineTotal), 0);
+        // 배송비
+        const shippingFee = this.calShippingFee(itemsTotal);
+        // 총 결제 금액
+        const orderTotal = itemsTotal + shippingFee;
+
+        return {
+            cartItems,
+            itemsTotal,
+            shippingFee,
+            orderTotal
+        };
     }
 
     // 장바구니 등록 취소
-    async removeCartItem(userSeq: number, productSeq: number) {
+    async removeCartItem(userSeq: number, productSeq: number): Promise<void> {
 
         try {
             const result = await this.cartRepository.delete({
@@ -104,7 +122,7 @@ export class CartService {
     }
 
     // 장바구니 전체 비우기
-    async clearCartItems(userSeq: number) {
+    async clearCartItems(userSeq: number): Promise<void> {
 
         try {
             await this.cartRepository.delete({ user: { seq: userSeq } });
@@ -115,7 +133,10 @@ export class CartService {
     }
 
     // 수량 변경
-    async updateQuantity(userSeq: number, updateQuantityDto: UpdateQuantityDto) {
+    async updateQuantity(userSeq: number, updateQuantityDto: UpdateQuantityDto): Promise<{
+        productSeq: number;
+        newQuantity: number;
+    }> {
 
         const { productSeq, newQuantity } = updateQuantityDto;
 
@@ -146,7 +167,7 @@ export class CartService {
                 }
             }
 
-            return { productSeq, newQuantity, noChange: true };
+            return { productSeq, newQuantity };
         } catch (e) {
             if (e instanceof HttpException) throw e;
             throw new InternalServerErrorException('장바구니 수량 변경 중 오류가 발생했습니다.');
