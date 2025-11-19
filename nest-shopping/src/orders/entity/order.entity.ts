@@ -68,4 +68,20 @@ export class Order {
     // 주문 품목 리스트
     @OneToMany(() => OrderItem, (orderItem) => orderItem.order, { cascade: true })
     items: OrderItem[];
+
+    // 결재 상태 (PENDING: 주문만 생성, PAID: 결재 완료, CANCELED: 결재 취소, FAILED: 결재 실패)
+    @Column({ type: 'char', length: 10, nullable: false, default: 'PENDING' })
+    status: 'PENDING' | 'PAID' | 'CANCELED' | 'FAILED';
+
+    // PG사 이름
+    @Column({ type: 'varchar', length: 20, nullable: true })
+    pgProvider: string | null;
+
+    // payment 키
+    @Column({ type: 'varchar', length: 100, nullable: true })
+    paymentKey: string | null;
+
+    // 결재 완료 시각
+    @Column({ type: 'timestamp', nullable: true })
+    paidAt: Date | null;
 }

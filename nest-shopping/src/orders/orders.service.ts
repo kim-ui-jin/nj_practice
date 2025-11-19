@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Order } from './entity/order.entity';
@@ -6,7 +6,7 @@ import { OrderItem } from './entity/order-item.entity';
 import { Cart } from 'src/cart/entity/cart.entity';
 import { CreateOrderDto } from './dto/order.dto';
 import { randomUUID } from 'crypto';
-import { CartItem, OrderPreview } from './type/order.type';
+import { CartItem, GetCompleteOrder, OrderPreview, OrderSummary } from './type/order.type';
 
 @Injectable()
 export class OrdersService {
@@ -69,7 +69,10 @@ export class OrdersService {
     }
 
     // 주문 생성
-    async createOrder(userSeq: number, createOrderDto: CreateOrderDto): Promise<Order> {
+    async createOrder(
+        userSeq: number,
+        createOrderDto: CreateOrderDto
+    ): Promise<Order> {
 
         try {
 
@@ -92,7 +95,7 @@ export class OrdersService {
             if (cartItems.length === 0) throw new BadRequestException('장바구니에 담긴 상품이 없습니다.');
 
             // 상품 금액 합계
-            const itemsTotal = cartItems.reduce((acc, row) => acc + Number(row.lineTotal), 0);
+            const itemsTotal = cartItems.reduce((acc, row) => acc + row.lineTotal, 0);
             if (itemsTotal <= 0) throw new BadRequestException('주문 금액이 올바르지 않습니다.');
 
             // 배송비
@@ -118,20 +121,17 @@ export class OrdersService {
                 address2: address2 || null,
                 memo: memo || null,
             });
-
             const savedOrder = await this.orderRepository.save(order);
 
-            const orderItems = cartItems.map((item) => {
-                return this.orderItemRepository.create({
-                    order: savedOrder,
-                    product: { seq: item.productSeq },
-                    productName: item.name,
-                    unitPrice: item.price,
-                    quantity: item.quantity,
-                    lineTotal: item.lineTotal,
-                });
-            });
-
+            const orderItemsData = cartItems.map((item) => ({
+                order: savedOrder,
+                product: { seq: item.productSeq },
+                productName: item.name,
+                unitPrice: item.price,
+                quantity: item.quantity,
+                lineTotal: item.lineTotal,
+            }));
+            const orderItems = this.orderItemRepository.create(orderItemsData);
             await this.orderItemRepository.save(orderItems);
 
             return savedOrder;
@@ -141,5 +141,63 @@ export class OrdersService {
             throw new InternalServerErrorException('주문 처리 중 오류가 발생했습니다.');
         }
 
+    }
+
+    async getCompleteOrder(
+        userSeq: number,
+        orderNumber: string,
+    ): Promise<GetCompleteOrder> {
+        const orderSummary: OrderSummary[] = await this.orderRepository
+            .createQueryBuilder('order')
+            .innerJoin('order.items', 'item')
+            .select([
+                'order.orderNumber AS orderNumber',
+                'order.itemsTotal AS itemsTotal',
+                'order.shippingFee AS shippingFee',
+                'order.orderTotal As orderTotal',
+                'order.receiverName AS receiverName',
+                'order.receiverPhone AS receiverPhone',
+                'order.address1 AS address1',
+                'order.address2 AS address2',
+                'order.memo AS memo',
+                'order.pgProvider AS pgProvider',
+                'order.createdAt AS createdAt',
+                'order.paidAt AS paidAt',
+                'item.seq AS itemSeq',
+                'item.productName AS productName',
+                'item.unitPrice AS unitPrice',
+                'item.quantity AS quantity',
+                'item.lineTotal AS lineTotal',
+            ])
+            .where('order.orderNumber = :orderNumber', { orderNumber })
+            .andWhere('order.user_seq = :userSeq', { userSeq })
+            .orderBy('item.seq', 'DESC')
+            .getRawMany();
+
+        if (orderSummary.length === 0) throw new NotFoundException('해당 주문을 찾을 수 없습니다.');
+
+        const firstOrder = orderSummary[0];
+
+        const {
+            itemSeq,
+            productName,
+            unitPrice,
+            quantity,
+            lineTotal,
+            ...orderInfo
+        } = firstOrder;
+
+        const items = orderSummary.map(order => ({
+            itemSeq: order.itemSeq,
+            productName: order.productName,
+            unitPrice: order.unitPrice,
+            quantity: order.quantity,
+            lineTotal: order.lineTotal,
+        }));
+
+        return {
+            ...orderInfo,
+            items
+        };
     }
 }

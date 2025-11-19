@@ -14,3 +14,47 @@ export type OrderPreview = {
     shippingFee: number;
     orderTotal: number;
 }
+
+export type OrderSummary = {
+    orderNumber: string;
+    itemsTotal: number;
+    shippingFee: number;
+    orderTotal: number;
+    receiverName: string;
+    receiverPhone: string;
+    address1: string;
+    address2: string | null;
+    memo: string | null;
+    pgProvider: string | null;
+    createdAt: Date;
+    paidAt: Date | null;
+    itemSeq: number;
+    productName: string;
+    unitPrice: number;
+    quantity: number;
+    lineTotal: number;
+}
+
+export type Items = {
+    itemSeq: number;
+    productName: string;
+    unitPrice: number;
+    quantity: number;
+    lineTotal: number;
+}
+
+export type GetCompleteOrder = {
+    orderNumber: string;
+    itemsTotal: number;
+    shippingFee: number;
+    orderTotal: number;
+    receiverName: string;
+    receiverPhone: string;
+    address1: string;
+    address2: string | null;
+    memo: string | null;
+    pgProvider: string | null;
+    createdAt: Date;
+    paidAt: Date | null;
+    items: Items[];
+}

@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { CreateOrderDto } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { Order } from './entity/order.entity';
-import { OrderPreview } from './type/order.type';
+import { GetCompleteOrder, OrderPreview } from './type/order.type';
 
 @Controller('orders')
 export class OrdersController {
@@ -17,6 +17,16 @@ export class OrdersController {
     ): Promise<Order> {
         const userSeq = req.user.seq;
         return this.ordersService.createOrder(userSeq, createOrderDto);
+    }
+
+    @Get(':orderNumber')
+    @UseGuards(JwtAuthGuard)
+    async getCompleteOrder(
+        @Req() req: any,
+        @Param('orderNumber') orderNumber: string,
+    ): Promise<GetCompleteOrder> {
+        const userSeq = req.user.seq;
+        return this.ordersService.getCompleteOrder(userSeq, orderNumber);
     }
 
     @Get('preview')

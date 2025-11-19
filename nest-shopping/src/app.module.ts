@@ -11,9 +11,9 @@ import { ProductsModule } from './products/products.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { CartModule } from './cart/cart.module';
-import { OrdersService } from './orders/orders.service';
-import { OrdersController } from './orders/orders.controller';
 import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
@@ -34,7 +34,10 @@ import { OrdersModule } from './orders/orders.module';
     AuthModule,
     ProductsModule,
     CartModule,
-    OrdersModule],
+    OrdersModule,
+    PaymentsModule,
+    HttpModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
