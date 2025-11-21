@@ -1,78 +1,78 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectRepository } from '@nestjs/typeorm';
 import { Order } from 'src/orders/entity/order.entity';
-import { Repository } from 'typeorm';
-import { ConfirmPaymenyDto } from './dto/confirm-payment.dto';
+import { ConfirmPaymenyDto } from './dto/payment.dto';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class PaymentsService {
 
     constructor(
-        @InjectRepository(Order) private readonly orderRepository: Repository<Order>,
         private readonly configService: ConfigService,
         private readonly httpService: HttpService,
     ) { }
 
+
     async confirmPayment(
-        userSeq: number,
         confirmPaymentDto: ConfirmPaymenyDto
-    ) {
-
-        const { orderNumber, paymentKey, amount } = confirmPaymentDto;
-
-        const order = await this.orderRepository.findOne({
-            where: {
-                orderNumber,
-                user: { seq: userSeq },
-            },
-        });
-        if (!order) throw new NotFoundException('주문 내역을 찾을 수 없습니다.');
-        if (order.status === 'PAID') throw new BadRequestException('이미 결제가 완료된 주문입니다.');
-        if (order.orderTotal !== amount) throw new BadRequestException('결제 금액이 주문 금액과 일치하지 않습니다.');
+    ): Promise<any> {
+        const { paymentKey, orderNumber, amount } = confirmPaymentDto;
 
         const url = 'https://api.tosspayments.com/v1/payments/confirm';
-
-        const tossSecretkey = this.configService.get<string>('TOSS_SECRET_KEY', '');
-
-        const basicToken = Buffer.from(`${tossSecretkey}:`).toString('base64');
+        const tossSecretKey = this.configService.get<string>('TOSS_SECRET_KEY', '');
+        const basicToken = Buffer.from(`${tossSecretKey}:`).toString('base64');
 
         const response = await firstValueFrom(
             this.httpService.post(
+                // URL, 어디로
                 url,
+                // data, 무엇을
                 {
                     paymentKey,
                     orderId: orderNumber,
-                    amount,
+                    amount
                 },
+                // config - 옵션, 어떻게
                 {
                     headers: {
                         Authorization: `Basic ${basicToken}`,
                         'Content-Type': 'application/json',
-                    },
-                },
-            ),
+                    }
+                }
+            )
+        );
+        const payment = response.data;
+        if (payment.status !== 'DONE') throw new BadRequestException('결제 승인에 실패했습니다.');
+
+        return payment;
+
+    }
+
+    async cancelPayment(order: Order, cancelReason?: string): Promise<any> {
+
+        if (!order.paymentKey) throw new BadRequestException('결제 정보가 없어 취소할 수 없습니다.');
+
+        const url = `https://api.tosspayments.com/v1/payments/${order.paymentKey}/cancel`;
+        const tossSecretKey = this.configService.get<string>('TOSS_SECRET_KEY', '');
+        const basicToken = Buffer.from(`${tossSecretKey}:`).toString('base64');
+
+        const response = await firstValueFrom(
+            this.httpService.post(
+                url,
+                { cancelReason: cancelReason ?? '사용자 요청 취소', },
+                {
+                    headers: {
+                        Authorization: `Basic ${basicToken}`,
+                        'Content-Type': 'application/json',
+                    }
+                }
+            )
         );
 
         const payment = response.data;
+        if (payment.status !== 'CANCELED') throw new BadRequestException('결제 취소에 실패했습니다.');
 
-        if (payment.status !== 'DONE') throw new BadRequestException('결제 승인에 실패했습니다.');
-
-        order.status = 'PAID';
-        order.pgProvider = 'toss';
-        order.paymentKey = paymentKey;
-        order.paidAt = new Date(payment.approvedAt);
-
-        await this.orderRepository.save(order);
-
-        return {
-            orderNumber: order.orderNumber,
-            status: order.status,
-            amount: order.orderTotal,
-            payment,
-        };
-
+        return payment;
     }
 }

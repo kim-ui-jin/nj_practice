@@ -6,7 +6,10 @@ import { OrderItem } from './entity/order-item.entity';
 import { Cart } from 'src/cart/entity/cart.entity';
 import { CreateOrderDto } from './dto/order.dto';
 import { randomUUID } from 'crypto';
-import { CartItem, GetCompleteOrder, OrderPreview, OrderSummary } from './type/order.type';
+import { CartItem, ConfirmOrder, GetCompleteOrder, OrderPreview, OrderSummary } from './type/order.type';
+import { OrderStatus } from 'src/common/enums/order-status.enum';
+import { PaymentsService } from 'src/payments/payments.service';
+import { CancelPaymentDto, ConfirmPaymenyDto } from 'src/payments/dto/payment.dto';
 
 @Injectable()
 export class OrdersService {
@@ -14,54 +17,8 @@ export class OrdersService {
         @InjectRepository(Order) private readonly orderRepository: Repository<Order>,
         @InjectRepository(OrderItem) private readonly orderItemRepository: Repository<OrderItem>,
         @InjectRepository(Cart) private readonly cartRepository: Repository<Cart>,
+        private readonly paymentsService: PaymentsService,
     ) { }
-
-    async orderPreview(userSeq: number): Promise<OrderPreview> {
-
-        try {
-
-            const cartItems: CartItem[] = await this.cartRepository
-                .createQueryBuilder('cart')
-                .innerJoin('cart.product', 'product')
-                .select([
-                    'cart.seq AS cartSeq',
-                    'cart.quantity AS quantity',
-                    'product.seq AS productSeq',
-                    'product.name AS name',
-                    'product.price AS price',
-                    'product.thumbnailUrl AS thumbnailUrl',
-                    '(cart.quantity * product.price) AS lineTotal'
-                ])
-                .where('cart.user_seq = :userSeq', { userSeq })
-                .orderBy('cart.seq', 'DESC')
-                .getRawMany();
-
-            if (cartItems.length === 0) throw new BadRequestException('장바구니에 담긴 상품이 없습니다.');
-
-            // 상품 금액 합계
-            const itemsTotal = cartItems.reduce((acc, row) => acc + Number(row.lineTotal), 0);
-            if (itemsTotal <= 0) throw new BadRequestException('주문 금액이 올바르지 않습니다.');
-
-            // 배송비
-            const shippingFee = this.calShippingFee(itemsTotal);
-
-            // 총 결제 금액
-            const orderTotal = itemsTotal + shippingFee;
-            if (orderTotal <= 0) throw new BadRequestException('총 결제 금액이 올바르지 않습니다.');
-
-            return {
-                cartItems,
-                itemsTotal,
-                shippingFee,
-                orderTotal
-            }
-
-        } catch (e) {
-            if (e instanceof HttpException) throw e;
-            throw new InternalServerErrorException('주문 정보 조회 중 오류가 발생했습니다.');
-        }
-
-    }
 
     // 배송비 계산
     private calShippingFee(itemsTotal: number): number {
@@ -95,7 +52,7 @@ export class OrdersService {
             if (cartItems.length === 0) throw new BadRequestException('장바구니에 담긴 상품이 없습니다.');
 
             // 상품 금액 합계
-            const itemsTotal = cartItems.reduce((acc, row) => acc + row.lineTotal, 0);
+            const itemsTotal = cartItems.reduce((acc, row) => acc + Number(row.lineTotal), 0);
             if (itemsTotal <= 0) throw new BadRequestException('주문 금액이 올바르지 않습니다.');
 
             // 배송비
@@ -143,6 +100,7 @@ export class OrdersService {
 
     }
 
+    // 완료된 주문 보기
     async getCompleteOrder(
         userSeq: number,
         orderNumber: string,
@@ -171,6 +129,7 @@ export class OrdersService {
             ])
             .where('order.orderNumber = :orderNumber', { orderNumber })
             .andWhere('order.user_seq = :userSeq', { userSeq })
+            .andWhere('order.status = :status', { status: OrderStatus.PAID })
             .orderBy('item.seq', 'DESC')
             .getRawMany();
 
@@ -199,5 +158,93 @@ export class OrdersService {
             ...orderInfo,
             items
         };
+    }
+
+    async confirmOrder(
+        userSeq: number,
+        confirmPaymentDto: ConfirmPaymenyDto,
+    ): Promise<ConfirmOrder> {
+
+        const { orderNumber, paymentKey, amount } = confirmPaymentDto;
+
+        const order = await this.orderRepository.findOne({
+            where: {
+                orderNumber,
+                user: { seq: userSeq }
+            }
+        });
+
+        if (!order) throw new NotFoundException('주문 내역을 찾을 수 없습니다.');
+        if (order.status !== OrderStatus.PENDING) {
+            throw new BadRequestException('결제할 수 없는 주문 상태입니다.');
+        }
+        if(order.orderTotal !== amount){
+            throw new BadRequestException('결제 금액이 주문 금액과 일치하지 않습니다.');
+        }
+
+        const payment = await this.paymentsService.confirmPayment(confirmPaymentDto);
+
+        order.status = OrderStatus.PAID;
+        order.pgProvider = 'toss';
+        order.paymentKey = paymentKey;
+        order.paidAt = new Date(payment.approvedAt);
+
+        await this.orderRepository.save(order);
+
+        return {
+            orderNumber: order.orderNumber,
+            status: order.status,
+            amount: order.orderTotal,
+            payment
+        };
+
+    }
+
+
+
+    // 결제 취소
+    async cancelOrder(
+        userSeq: number,
+        cancelPaymentDto: CancelPaymentDto,
+    ) {
+
+        const { orderNumber, cancelReason } = cancelPaymentDto;
+
+        const order = await this.orderRepository.findOne({
+            where: {
+                orderNumber,
+                user: { seq: userSeq },
+            }
+        });
+        if (!order) throw new NotFoundException('주문 내역을 찾을 수 없습니다.');
+        if (order.status === OrderStatus.CANCELED) {
+            throw new BadRequestException('이미 취소된 주문입니다.');
+        }
+        if (order.status === OrderStatus.PENDING) {
+            order.status = OrderStatus.CANCELED;
+            await this.orderRepository.save(order);
+
+            return {
+                orderNumber: order.orderNumber,
+                status: order.status,
+                amount: order.orderTotal,
+                payment: null,
+            };
+        }
+        if (order.status !== OrderStatus.PAID) {
+            throw new BadRequestException('취소할 수 없는 주문 상태입니다.');
+        }
+
+        const payment = await this.paymentsService.cancelPayment(order, cancelReason);
+        order.status = OrderStatus.CANCELED;
+        await this.orderRepository.save(order);
+
+        return {
+            orderNumber: order.orderNumber,
+            status: order.status,
+            amount: order.orderTotal,
+            payment
+        }
+
     }
 }

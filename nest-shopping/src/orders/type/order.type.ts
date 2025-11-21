@@ -1,3 +1,5 @@
+import { OrderStatus } from "src/common/enums/order-status.enum";
+
 export type CartItem = {
     cartSeq: number;
     quantity: number;
@@ -57,4 +59,11 @@ export type GetCompleteOrder = {
     createdAt: Date;
     paidAt: Date | null;
     items: Items[];
+}
+
+export type ConfirmOrder = {
+    orderNumber: string;
+    status: OrderStatus;
+    amount: number;
+    payment: any;
 }

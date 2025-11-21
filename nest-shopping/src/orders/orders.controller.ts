@@ -3,7 +3,8 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { CreateOrderDto } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { Order } from './entity/order.entity';
-import { GetCompleteOrder, OrderPreview } from './type/order.type';
+import { ConfirmOrder, GetCompleteOrder } from './type/order.type';
+import { CancelPaymentDto, ConfirmPaymenyDto } from 'src/payments/dto/payment.dto';
 
 @Controller('orders')
 export class OrdersController {
@@ -19,6 +20,16 @@ export class OrdersController {
         return this.ordersService.createOrder(userSeq, createOrderDto);
     }
 
+    @Post('confirm')
+    @UseGuards(JwtAuthGuard)
+    async confirmPayment(
+        @Req() req: any,
+        @Body() confirmPaymentDto: ConfirmPaymenyDto,
+    ): Promise<ConfirmOrder> {
+        const userSeq = req.user.seq;
+        return this.ordersService.confirmOrder(userSeq, confirmPaymentDto);
+    }
+
     @Get(':orderNumber')
     @UseGuards(JwtAuthGuard)
     async getCompleteOrder(
@@ -29,12 +40,14 @@ export class OrdersController {
         return this.ordersService.getCompleteOrder(userSeq, orderNumber);
     }
 
-    @Get('preview')
+    @Post('cancel')
     @UseGuards(JwtAuthGuard)
-    async orderPreview(
-        @Req() req: any
-    ): Promise<OrderPreview> {
+    async cancelOrder(
+        @Req() req: any,
+        @Body() cancelPaymentDto: CancelPaymentDto,
+    ) {
         const userSeq = req.user.seq;
-        return this.ordersService.orderPreview(userSeq);
+        return this.ordersService.cancelOrder(userSeq, cancelPaymentDto)
     }
+
 }

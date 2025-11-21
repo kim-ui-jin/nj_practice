@@ -5,6 +5,7 @@ import tz from "dayjs/plugin/timezone"
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { OrderItem } from "./order-item.entity";
 import { User } from "src/user/entity/user.entity";
+import { OrderStatus } from "src/common/enums/order-status.enum";
 dayjs.extend(utc);
 dayjs.extend(tz);
 
@@ -70,8 +71,8 @@ export class Order {
     items: OrderItem[];
 
     // 결재 상태 (PENDING: 주문만 생성, PAID: 결재 완료, CANCELED: 결재 취소, FAILED: 결재 실패)
-    @Column({ type: 'char', length: 10, nullable: false, default: 'PENDING' })
-    status: 'PENDING' | 'PAID' | 'CANCELED' | 'FAILED';
+    @Column({ type: 'char', length: 10, nullable: false, default: OrderStatus.PENDING })
+    status: OrderStatus;
 
     // PG사 이름
     @Column({ type: 'varchar', length: 20, nullable: true })
