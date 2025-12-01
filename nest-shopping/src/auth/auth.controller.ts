@@ -1,21 +1,21 @@
-import { Body, Controller, Post, Res, Req, UseGuards, BadRequestException, Delete } from '@nestjs/common';
-import type { Response } from 'express';
+import { Body, Controller, Post, Req, UseGuards, BadRequestException, Delete } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginUserDto } from 'src/user/dto/user.dto';
 import { JwtAuthGuard } from './guards/jwt.guard';
+import { CommonResponse } from 'src/common/common-response';
 
 @Controller('auth')
 export class AuthController {
     constructor(
-        private authService: AuthService,
+        private readonly authService: AuthService,
     ) { }
 
     // 로그인
     @Post('login')
-    async login(@Body() loginUserDto: LoginUserDto, @Res({ passthrough: true }) res: Response) {
-        const result = await this.authService.login(loginUserDto);
-        res.setHeader('Authorization', 'Bearer ' + result.accessToken);
-        return result;
+    async login(
+        @Body() loginUserDto: LoginUserDto
+    ): Promise<CommonResponse<{ accessToken: string, refreshToken: string }>> {
+        return this.authService.login(loginUserDto);
     }
 
     // 토큰 재발급
@@ -28,7 +28,10 @@ export class AuthController {
     // 로그아웃
     @Delete('logout')
     @UseGuards(JwtAuthGuard)
-    async logout(@Req() req: any) {
-        return this.authService.logout(req.user.seq);
+    async logout(
+        @Req() req: any
+    ): Promise<CommonResponse<void>> {
+        const userSeq = req.user.seq;
+        return this.authService.logout(userSeq);
     }
 }

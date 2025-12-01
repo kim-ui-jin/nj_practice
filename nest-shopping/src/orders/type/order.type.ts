@@ -10,7 +10,7 @@ export type CartItem = {
     lineTotal: number;
 }
 
-export type OrderPreview = {
+export type GetCartItems = {
     cartItems: CartItem[];
     itemsTotal: number;
     shippingFee: number;

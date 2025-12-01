@@ -1,6 +1,11 @@
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { ArrayNotEmpty, IsArray, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateOrderDto {
+
+    @IsArray()
+    @ArrayNotEmpty()
+    @IsInt({ each: true })
+    cartSeqList: number[];
 
     @IsString()
     @IsNotEmpty()

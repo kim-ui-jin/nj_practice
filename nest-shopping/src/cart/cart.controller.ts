@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } fro
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { AddToCartDto, UpdateQuantityDto } from './dto/cart.dto';
 import { CartService } from './cart.service';
+import { CommonResponse } from 'src/common/common-response';
 
 @Controller('cart')
 export class CartController {
@@ -14,7 +15,7 @@ export class CartController {
     async addToCart(
         @Req() req: any,
         @Body() addToCartDto: AddToCartDto,
-    ): Promise<{ productSeq: number; quantity: number }> {
+    ): Promise<CommonResponse<{ productSeq: number; quantity: number }>> {
         const userSeq = req.user.seq;
         return this.cartService.addItem(userSeq, addToCartDto);
     }
@@ -33,7 +34,7 @@ export class CartController {
     async removeCartItem(
         @Req() req: any,
         @Param('productSeq') productSeq: number,
-    ): Promise<void> {
+    ): Promise<CommonResponse<void>> {
         const userSeq = req.user.seq;
         return this.cartService.removeCartItem(userSeq, productSeq);
     }
@@ -41,9 +42,11 @@ export class CartController {
     // 장바구니 비우기
     @Delete('items')
     @UseGuards(JwtAuthGuard)
-    async clearCartItems(@Req() req: any): Promise<void> {
+    async clearCartItems(
+        @Req() req: any
+    ): Promise<CommonResponse<void>> {
         const userSeq = req.user.seq;
-        await this.cartService.clearCartItems(userSeq);
+        return this.cartService.clearCartItems(userSeq);
     }
 
     // 수량 변경
@@ -52,9 +55,9 @@ export class CartController {
     async updateQuantity(
         @Req() req: any,
         @Body() updateQuantityDto: UpdateQuantityDto,
-    ): Promise<{ productSeq: number; newQuantity: number; }> {
+    ): Promise<CommonResponse<{ productSeq: number; newQuantity: number }>> {
         const userSeq = req.user.seq;
-        return this.cartService.updateQuantity(userSeq, updateQuantityDto)
+        return this.cartService.updateQuantity(userSeq, updateQuantityDto);
     }
 
 }

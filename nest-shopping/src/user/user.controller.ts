@@ -1,44 +1,62 @@
 import { Body, Controller, Delete, Get, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
-import { ChangePasswordDto, CheckIdQueryDto, CreateUserDto, DeleteAccountDto, GetMyInfoDto } from './dto/user.dto';
+import { ChangePasswordDto, CheckIdDto, CreateUserDto, DeleteAccountDto, GetMyInfoDto } from './dto/user.dto';
 import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
 import { Roles } from 'src/auth/decorators/role.decorator';
 import { RoleType } from 'src/common/enums/role-type.enum';
+import { CommonResponse } from 'src/common/common-response';
+import { GetMyInfo, SafeUser } from './type/user-type';
 
 @Controller('users')
 export class UserController {
     constructor(
-        private userService: UserService
+        private readonly userService: UserService
     ) { }
 
     @Post('signup')
-    async signup(@Body() createUserDto: CreateUserDto) {
+    async signup(
+        @Body() createUserDto: CreateUserDto
+    ): Promise<CommonResponse<SafeUser>> {
         return this.userService.signup(createUserDto);
     }
 
     @Patch('change-password')
     @UseGuards(JwtAuthGuard)
-    async changeMyPassword(@Req() req: any, @Body() changePasswordDto: ChangePasswordDto) {
-        return this.userService.changePassword(req.user.seq, changePasswordDto);
+    async changePassword(
+        @Req() req: any, 
+        @Body() changePasswordDto: ChangePasswordDto
+    ): Promise<CommonResponse<void>> {
+        const userSeq = req.user.seq
+        return this.userService.changePassword(userSeq, changePasswordDto);
     }
 
     @Get('check-id')
-    async checkUserId(@Query() checkIdQueryDto: CheckIdQueryDto) {
-        return this.userService.existsByUserId(checkIdQueryDto.userId);
+    async checkId(
+        @Query() checkIdDto: CheckIdDto
+    ): Promise<CommonResponse<void>> {
+        const userId = checkIdDto.userId
+        return this.userService.checkId(userId);
     }
 
     @Post('me')
     @UseGuards(JwtAuthGuard)
-    async getMyInfo(@Req() req: any, @Body() getMyInfoDto: GetMyInfoDto) {
-        return this.userService.getMyInfo(req.user.seq, getMyInfoDto.userPassword);
+    async getMyInfo(
+        @Req() req: any, 
+        @Body() getMyInfoDto: GetMyInfoDto
+    ): Promise<CommonResponse<GetMyInfo>> {
+        const userSeq = req.user.seq;
+        return this.userService.getMyInfo(userSeq, getMyInfoDto.userPassword);
     }
 
-    @Delete('withdraw')
+    @Delete('delete-account')
     @UseGuards(JwtAuthGuard)
-    async deleteMetadata(@Req() req: any, @Body() deleteAccountDto: DeleteAccountDto) {
+    async deleteAccount(
+        @Req() req: any, 
+        @Body() deleteAccountDto: DeleteAccountDto
+    ): Promise<CommonResponse<void>> {
         const user = req.user;
-        return this.userService.deleteMe(user.seq, deleteAccountDto);
+        return this.userService.deleteAccount(user.seq, deleteAccountDto);
     }
 
     @Get()
@@ -50,9 +68,11 @@ export class UserController {
 
     @Post('me/roles/seller')
     @UseGuards(JwtAuthGuard)
-    async registerSeller(@Req() req: any) {
-        const user = req.user;
-        return this.userService.registerSeller(user.seq);
+    async registerSeller(
+        @Req() req: any
+    ): Promise<CommonResponse<void>> {
+        const userSeq = req.user.seq;
+        return this.userService.registerSeller(userSeq);
     }
 
 }

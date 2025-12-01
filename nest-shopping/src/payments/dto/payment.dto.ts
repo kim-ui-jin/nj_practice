@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
+import { ArrayNotEmpty, IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 export class ConfirmPaymenyDto {
 
@@ -13,6 +13,11 @@ export class ConfirmPaymenyDto {
     @IsNumber()
     @IsNotEmpty()
     amount: number;
+
+    @IsArray()
+    @ArrayNotEmpty()
+    @IsInt({ each: true })
+    cartSeqList: number[];
 }
 
 export class CancelPaymentDto {

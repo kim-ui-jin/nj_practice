@@ -3,19 +3,22 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { CreateOrderDto } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 import { Order } from './entity/order.entity';
-import { ConfirmOrder, GetCompleteOrder } from './type/order.type';
+import { GetCompleteOrder } from './type/order.type';
 import { CancelPaymentDto, ConfirmPaymenyDto } from 'src/payments/dto/payment.dto';
+import { CommonResponse } from 'src/common/common-response';
 
 @Controller('orders')
 export class OrdersController {
-    constructor(private readonly ordersService: OrdersService) { }
+    constructor(
+        private readonly ordersService: OrdersService
+    ) { }
 
     @Post()
     @UseGuards(JwtAuthGuard)
     async createOrder(
         @Req() req: any,
         @Body() createOrderDto: CreateOrderDto,
-    ): Promise<Order> {
+    ): Promise<CommonResponse<Order>> {
         const userSeq = req.user.seq;
         return this.ordersService.createOrder(userSeq, createOrderDto);
     }
@@ -25,7 +28,7 @@ export class OrdersController {
     async confirmPayment(
         @Req() req: any,
         @Body() confirmPaymentDto: ConfirmPaymenyDto,
-    ): Promise<ConfirmOrder> {
+    ): Promise<CommonResponse<void>> {
         const userSeq = req.user.seq;
         return this.ordersService.confirmOrder(userSeq, confirmPaymentDto);
     }
@@ -35,7 +38,7 @@ export class OrdersController {
     async getCompleteOrder(
         @Req() req: any,
         @Param('orderNumber') orderNumber: string,
-    ): Promise<GetCompleteOrder> {
+    ): Promise<CommonResponse<GetCompleteOrder>> {
         const userSeq = req.user.seq;
         return this.ordersService.getCompleteOrder(userSeq, orderNumber);
     }
@@ -45,7 +48,7 @@ export class OrdersController {
     async cancelOrder(
         @Req() req: any,
         @Body() cancelPaymentDto: CancelPaymentDto,
-    ) {
+    ): Promise<CommonResponse<void>> {
         const userSeq = req.user.seq;
         return this.ordersService.cancelOrder(userSeq, cancelPaymentDto)
     }

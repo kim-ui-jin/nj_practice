@@ -1,11 +1,11 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entity/product.entity';
-import { Not, Repository } from 'typeorm';
-import { AddToCartDto, CreateProductDto, ProductCardDto, SearchByNameDto, UpdateProductDto, UpdateProductStatusDto, UpdateThumbnailDto } from './dto/product.dto';
-import { BaseResponseDto } from 'src/common/dto/base_response.dto';
+import { Repository } from 'typeorm';
+import { CreateProductDto, ProductCardDto, SearchByNameDto, UpdateProductDto, UpdateProductStatusDto } from './dto/product.dto';
 import { instanceToPlain } from 'class-transformer';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
+import { CommonResponse } from 'src/common/common-response';
 
 const escapeLike = (s: string) => s.replace(/[%_]/g, (char) => '\\' + char);
 
@@ -20,45 +20,64 @@ export class ProductsService {
 
     // 상품 등록
     async createProduct(
-        createProductDto: CreateProductDto,
-        userSeq: number
-    ): Promise<Product> {
+        userSeq: number,
+        createProductDto: CreateProductDto
+    ): Promise<CommonResponse<Product>> {
+
+        const {
+            name,
+            price,
+            stockQuantity,
+            description,
+            thumbnailUrl,
+            imageUrls,
+            status
+        } = createProductDto;
 
         const product = this.productRepository.create({
-            name: createProductDto.name,
-            price: createProductDto.price,
-            stockQuantity: createProductDto.stockQuantity ?? 0,
-            description: createProductDto.description ?? null,
-            thumbnailUrl: createProductDto.thumbnailUrl ?? null,
-            imageUrls: createProductDto.imageUrls ?? null,
-            status: createProductDto.status ?? ProductStatus.INACTIVE,
+            name,
+            price,
+            stockQuantity: stockQuantity ?? 0,
+            description: description ?? null,
+            thumbnailUrl: thumbnailUrl ?? null,
+            imageUrls: imageUrls ?? null,
+            status: status ?? ProductStatus.INACTIVE,
             creator: { seq: userSeq }
-        })
+        });
 
-        try {
-            return await this.productRepository.save(product);
-        } catch (e) {
-            throw new InternalServerErrorException('상품 등록 중 오류가 발생했습니다.')
-        }
+        const saved = await this.productRepository.save(product);
+
+        return {
+            success: true,
+            message: '상품 등록 성공',
+            data: saved
+        };
+
 
     }
 
     // 상품 썸네일 업로드
-    async uploadThumbnail(file: Express.Multer.File) {
+    async uploadThumbnail(
+        file: Express.Multer.File
+    ) {
         if (!file) throw new BadRequestException('썸네일 파일을 첨부하세요.');
         const thumbnailUrl = `/static/products/thumbnails/${file.filename}`;
         return thumbnailUrl;
     }
 
     // 상품 이미지 업로드
-    async uploadImages(files: Express.Multer.File[]) {
+    async uploadImages(
+        files: Express.Multer.File[]
+    ) {
         if (!files || files.length === 0) throw new BadRequestException('최소 1개 이상의 이미지 파일을 첨부하세요.');
         const imageUrls = files.map(file => `/static/products/images/${file.filename}`);
         return imageUrls;
     }
 
     // 전체 조회
-    async findAll({ status = ProductStatus.ACTIVE }): Promise<Product[]> {
+    async findAll(
+        { status = ProductStatus.ACTIVE }
+    ): Promise<Product[]> {
         return this.productRepository.find({
             where: { status },
             order: { seq: 'DESC' },
@@ -66,45 +85,54 @@ export class ProductsService {
     }
 
     // 단건 조회
-    async findOneBySeq(seq: number) {
-
-        const product = await this.productRepository.findOne({ where: { seq } });
+    async findOneBySeq(
+        productSeq: number
+    ): Promise<Product> {
+        const product = await this.productRepository.findOne({
+            where: { seq: productSeq }
+        });
         if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
 
         return product;
     }
 
     // 내가 등록한 상품 삭제
-    async removeProduct(seq: number, meSeq: number): Promise<BaseResponseDto> {
+    async removeProduct(
+        productSeq: number,
+        userSeq: number
+    ): Promise<CommonResponse<void>> {
 
-        try {
+        const result = await this.productRepository.delete({
+            seq: productSeq,
+            creator: { seq: userSeq }
+        });
 
-            const result = await this.productRepository
-                .createQueryBuilder()
-                .delete()
-                .from(Product)
-                .where('seq = :seq AND created_by_user_seq = :useq', { seq, useq: meSeq })
-                .execute();
+        if (!result.affected) throw new NotFoundException('상품을 찾을 수 없습니다.');
 
-            if (!result.affected) throw new NotFoundException('상품을 찾을 수 없습니다.');
-
-            return { success: true, message: '상품을 등록 취소했습니다.' }
-
-        } catch (e) {
-            throw new InternalServerErrorException('상품 삭제 처리 중 오류가 발생했습니다.');
-        }
+        return {
+            success: true,
+            message: '상품을 등록 취소했습니다.'
+        };
 
     }
 
     // 내가 등록한 상품 조회
-    async findMineByUserId(seq: number): Promise<Product[]> {
+    async findMineByUserId(
+        userSeq: number
+    ): Promise<CommonResponse<Product[]>> {
 
-        const meProducts = await this.productRepository.find({
-            where: { creator: { seq } },
+        const products = await this.productRepository.find({
+            where: { creator: { seq: userSeq } },
             order: { seq: 'DESC' }
         });
+        if (products.length === 0) throw new NotFoundException('등록한 상품이 없습니다.');
 
-        return meProducts;
+        return {
+            success: true,
+            message: '내가 등록한 상품 조회 성공',
+            data: products
+        };
+
     }
 
     // 검색어로 상품 조회
@@ -213,25 +241,29 @@ export class ProductsService {
 
     // 상품 상태 변경
     async updateProductStatus(
-        id: number,
+        productSeq: number,
         userSeq: number,
         updateProductStatusDto: UpdateProductStatusDto,
-    ) {
+    ): Promise<CommonResponse<void>> {
+
+        const { status } = updateProductStatusDto
+
         const product = await this.productRepository.findOne({
-            where: { seq: id },
-            relations: { creator: true },
+            where: {
+                seq: productSeq,
+                creator: { seq: userSeq }
+            }
         });
         if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
-        if (product.creator.seq !== userSeq) {
-            throw new ForbiddenException('본인이 등록한 상품만 상태를 변경할 수 있습니다.');
-        }
 
-        product.status = updateProductStatusDto.status;
+        product.status = status;
 
-        try {
-            return await this.productRepository.save(product);
-        } catch (e) {
-            throw new InternalServerErrorException('상품 상태 변경 중 오류가 발생했습니다.');
-        }
+        await this.productRepository.save(product);
+
+        return {
+            success: true,
+            message: '상품 상태 변경 성공',
+        };
+
     }
 }

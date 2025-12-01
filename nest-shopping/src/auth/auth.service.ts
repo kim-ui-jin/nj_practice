@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LoginUserDto } from 'src/user/dto/user.dto';
@@ -7,8 +7,8 @@ import { UserService } from 'src/user/user.service';
 import { QueryFailedError, Repository } from 'typeorm';
 import { JwtPayload } from './jwt/payload.interface';
 import * as bcrypt from 'bcrypt';
-import { BaseResponseDto } from 'src/common/dto/base_response.dto';
 import { ConfigService } from '@nestjs/config';
+import { CommonResponse } from 'src/common/common-response';
 
 @Injectable()
 export class AuthService {
@@ -20,24 +20,37 @@ export class AuthService {
     ) { }
 
     // 로그인
-    async login(loginUserDto: LoginUserDto): Promise<{ accessToken: string, refreshToken: string }> {
+    async login(
+        loginUserDto: LoginUserDto
+    ): Promise<CommonResponse<{ accessToken: string, refreshToken: string }>> {
+
+        const { userId, userPassword } = loginUserDto;
 
         try {
 
             const user = await this.userRepository.findOne({
-                where: { userId: loginUserDto.userId },
-                select: { seq: true, userId: true, userName: true, userPassword: true }
+                where: { userId },
+                select: {
+                    seq: true,
+                    userId: true,
+                    userName: true,
+                    userPassword: true
+                }
             });
             if (!user) {
                 throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
             }
 
-            const comparedPassword = await bcrypt.compare(loginUserDto.userPassword, user.userPassword);
+            const comparedPassword = await bcrypt.compare(userPassword, user.userPassword);
             if (!comparedPassword) {
                 throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
             }
 
-            const accessPayload = { seq: user.seq, userId: user.userId, userName: user.userName };
+            const accessPayload = {
+                seq: user.seq,
+                userId: user.userId,
+                userName: user.userName
+            };
             const refreshPayload = { seq: user.seq };
 
             const accessToken = this.jwtService.sign(accessPayload, {
@@ -52,69 +65,85 @@ export class AuthService {
             await this.saveRefreshToken(user.seq, refreshToken);
 
             return {
-                accessToken: accessToken,
-                refreshToken: refreshToken
-            }
+                success: true,
+                message: '로그인 성공',
+                data: {
+                    accessToken: accessToken,
+                    refreshToken: refreshToken
+                }
+            };
 
         } catch (e) {
-
-            if (e instanceof UnauthorizedException) throw e;
+            if (e instanceof HttpException) throw e;
             if (e instanceof QueryFailedError) {
                 throw new InternalServerErrorException('로그인 처리 중 데이터베이스 오류가 발생했습니다.');
             }
             throw new InternalServerErrorException('로그인 처리 중 오류가 발생했습니다.')
-
         }
 
     }
 
-    async refreshByToken(refreshToken: string): Promise<{ accessToken: string, refreshToken: string }> {
+    async refreshByToken(
+        refreshToken: string
+    ): Promise<{ accessToken: string, refreshToken: string }> {
+
+        const refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
+        const accessSecret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
 
         let decoded: any;
 
         try {
             decoded = this.jwtService.verify(refreshToken, {
-                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET')
+                secret: refreshSecret
             });
         } catch (e) {
             if (e.name === 'TokenExpiredError') {
                 const tokenExpired = this.jwtService.verify(refreshToken, {
-                    secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+                    secret: refreshSecret,
                     ignoreExpiration: true
                 });
                 const seq = tokenExpired.seq;
                 if (seq) {
                     await this.userRepository.update(seq, { refreshTokenHash: null });
                 }
-                throw new UnauthorizedException('리프레시 토큰 만료')
+                throw new UnauthorizedException('리프레시 토큰 만료');
             }
             throw new UnauthorizedException('리프레시 토큰 검증 실패');
         }
 
         const userSeq = decoded.seq;
-        if (!userSeq) throw new UnauthorizedException('리프레시 토큰에 사용자 식별자가 없습니다')
+        if (!userSeq) throw new UnauthorizedException('리프레시 토큰에 사용자 식별자가 없습니다');
 
         const user = await this.userRepository.findOne({
             where: { seq: userSeq },
-            select: { seq: true, userId: true, userName: true, refreshTokenHash: true }
+            select: {
+                seq: true,
+                userId: true,
+                userName: true,
+                refreshTokenHash: true
+            }
         });
         if (!user?.refreshTokenHash) throw new UnauthorizedException('등록된 리프레시 토큰이 없습니다.');
 
-        const matched = await bcrypt.compare(refreshToken, user.refreshTokenHash)
+        const matched = await bcrypt.compare(refreshToken, user.refreshTokenHash);
         if (!matched) {
             await this.userRepository.update(user.seq, { refreshTokenHash: null })
             throw new UnauthorizedException('유효하지 않은 리프레시 토큰');
         }
 
-        const newAccessPayload = { seq: user.seq, userId: user.userId, userName: user.userName }
+        const newAccessPayload = {
+            seq: user.seq,
+            userId: user.userId,
+            userName: user.userName
+        };
         const newRefreshPayload = { seq: user.seq };
 
         const newAccessToken = this.jwtService.sign(newAccessPayload, {
-            secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+            secret: accessSecret,
             expiresIn: '15m'
         })
         const newRefreshToken = this.jwtService.sign(newRefreshPayload, {
-            secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+            secret: refreshSecret,
             expiresIn: '7d'
         })
 
@@ -145,17 +174,19 @@ export class AuthService {
     }
 
     // 로그아웃
-    async logout(seq: number): Promise<BaseResponseDto> {
+    async logout(
+        userSeq: number
+    ): Promise<CommonResponse<void>> {
 
-        try {
-            await this.userRepository.update(seq, { refreshTokenHash: null });
-            return { success: true, message: '로그아웃 성공' };
-        } catch (e) {
-            if (e instanceof QueryFailedError) {
-                throw new InternalServerErrorException('로그아웃 처리 중 데이터베이스 오류가 발생했습니다.');
-            }
-            throw new InternalServerErrorException('로그아웃 처리 중 오류가 발생했습니다.');
-        }
+        const logout = await this.userRepository.update(
+            { seq: userSeq },
+            { refreshTokenHash: null }
+        );
+        if (!logout) throw new InternalServerErrorException('로그아웃에 실패했습니다.');
+        return {
+            success: true,
+            message: '로그아웃 성공'
+        };
 
     }
 }

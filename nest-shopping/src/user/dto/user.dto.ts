@@ -61,7 +61,7 @@ export class ChangePasswordDto {
     newPassword: string;
 }
 
-export class CheckIdQueryDto {
+export class CheckIdDto {
 
     @IsString()
     @MaxLength(10, { message: '아이디는 최대 10자까지 가능합니다.' })
