@@ -17,6 +17,7 @@ services:
     # .env 값과 별도로 덮어쓰거나 추가할 환경변수                   
     environment:
       DB_HOST: host.docker.internal
+      DB_USERNAME: nestjs 
     # 호스트 ./uploads ↔ 컨테이너 /app/uploads 폴더를 공유(업로드 파일 보존)
     volumes:
       - ./uploads:/app/uploads
