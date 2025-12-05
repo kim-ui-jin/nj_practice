@@ -38,6 +38,6 @@ jobs:
                 key: ${{ secrets.EC2_SSH_KEY }}
                 port: 22
                 script: |
-                  cd /home/ubuntu/nest-shopping
-                  docker-compose pull
-                  docker-compose up -d
+                  cd /home/ubuntu/nj_practice/nest-shopping
+                  docker compose pull
+                  docker compose up -d
