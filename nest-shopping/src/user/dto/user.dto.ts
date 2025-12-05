@@ -74,7 +74,7 @@ export class GetMyInfoDto {
 
     @IsString()
     @IsNotEmpty({ message: '비밀번호를 입력해주세요.' })
-    userPassword: string;
+    currentPassword: string;
 }
 
 export class DeleteAccountDto {
