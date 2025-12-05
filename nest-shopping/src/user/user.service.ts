@@ -262,4 +262,29 @@ export class UserService {
         }
 
     }
+
+    // 주소 변경
+    async changeAddress(
+        userSeq: number,
+        userAddress: string
+    ): Promise<CommonResponse<void>> {
+        const user = this.userRepository.findOne({
+            where: { seq: userSeq }
+        });
+        if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+
+        const result = await this.userRepository.update(
+            { seq: userSeq },
+            { userAddress }
+        );
+        if (result.affected === 0) {
+            throw new BadRequestException('주소 변경에 실패했습니다.');
+        }
+
+        return {
+            success: true,
+            message: '주소가 변경되었습니다.'
+        };
+
+    }
 }

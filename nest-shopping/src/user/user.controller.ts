@@ -75,4 +75,15 @@ export class UserController {
         return this.userService.registerSeller(userSeq);
     }
 
+    // 주소 변경
+    @Post('address')
+    @UseGuards(JwtAuthGuard)
+    async changeAddress(
+        @Req() req: any,
+        @Body('userAddress') userAddress: string
+    ): Promise<CommonResponse<void>> {
+        const userSeq = req.user.seq;
+        return this.userService.changeAddress(userSeq, userAddress);
+    }
+
 }
