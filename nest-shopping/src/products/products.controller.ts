@@ -18,7 +18,7 @@ export class ProductsController {
     // 상품 등록
     @Post()
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(RoleType.SELLER)
+    // @Roles(RoleType.SELLER)
     async createProduct(
         @Req() req: any,
         @Body() createProductDto: CreateProductDto,
