@@ -20,7 +20,8 @@ jobs:
             - name: Build and push Docker image
               uses: docker/build-push-action@v5
               with:
-                context: .
+                context: ./nest-shopping
+                file: ./nest-shopping/Dockerfile
                 push: true
                 tags: ${{ secrets.DOCKERHUB_USERNAME }}/nest-shopping:latest
 
