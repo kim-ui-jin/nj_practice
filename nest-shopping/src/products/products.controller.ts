@@ -91,6 +91,7 @@ export class ProductsController {
         return this.productsService.removeProduct(productSeq, userSeq);
     }
 
+    // 상품 업데이트
     @Patch(':id')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(RoleType.SELLER)
