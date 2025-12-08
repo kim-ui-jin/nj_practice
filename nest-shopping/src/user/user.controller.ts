@@ -46,7 +46,7 @@ export class UserController {
         @Body() getMyInfoDto: GetMyInfoDto
     ): Promise<CommonResponse<GetMyInfo>> {
         const userSeq = req.user.seq;
-        return this.userService.getMyInfo(userSeq, getMyInfoDto.currentPassword);
+        return this.userService.getMyInfo(userSeq, getMyInfoDto);
     }
 
     @Delete('delete-account')

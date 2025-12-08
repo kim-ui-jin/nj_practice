@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, HttpException, Injectable, Inte
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
 import { QueryFailedError, Repository } from 'typeorm';
-import { ChangePasswordDto, CreateUserDto, DeleteAccountDto } from './dto/user.dto';
+import { ChangePasswordDto, CreateUserDto, DeleteAccountDto, GetMyInfoDto } from './dto/user.dto';
 import * as bcrypt from 'bcrypt';
 import { UserAuthority } from './entity/user-authority.entity';
 import { RoleType } from 'src/common/enums/role-type.enum';
@@ -120,8 +120,10 @@ export class UserService {
     // 내 정보조회
     async getMyInfo(
         userSeq: number,
-        currentPassword: string
+        getMyInfoDto: GetMyInfoDto
     ): Promise<CommonResponse<GetMyInfo>> {
+
+        const { currentPassword } = getMyInfoDto
 
         try {
             const user = await this.userRepository.findOne({
