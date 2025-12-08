@@ -129,9 +129,9 @@ export class UserService {
             const user = await this.userRepository
                 .createQueryBuilder('user')
                 .addSelect('user.userPassword')
-                .where('user.seq = :seq', { userSeq })
+                .where('user.seq = :seq', { seq: userSeq })
                 .getOne();
-                
+
             if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
             const comparedPassword = await bcrypt.compare(currentPassword, user.userPassword);
