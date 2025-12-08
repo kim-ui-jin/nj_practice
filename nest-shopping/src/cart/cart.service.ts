@@ -133,7 +133,7 @@ export class CartService {
             .createQueryBuilder()
             .delete()
             .from(Cart)
-            .where('user_seq = :userSeq', { userSeq})
+            .where('user_seq = :userSeq', { userSeq })
             .andWhere('product_seq IN (:...productSeqList)', { productSeqList })
             .execute();
 
@@ -215,5 +215,20 @@ export class CartService {
             }
         };
 
+    }
+
+    // 장바구니 개수 조회 (헤더용)
+    async getCartItemCount(
+        userSeq: number
+    ): Promise<CommonResponse<{ itemCount: number }>> {
+        const itemCount = await this.cartRepository.count({
+            where: { user: { seq: userSeq } }
+        });
+
+        return {
+            success: true,
+            message: '장바구니 상품 수 조회에 성공했습니다.',
+            data: { itemCount }
+        };
     }
 }

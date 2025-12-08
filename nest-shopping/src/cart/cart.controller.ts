@@ -3,6 +3,7 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt.guard';
 import { AddToCartDto, RemoveCartItemDto, UpdateQuantityDto } from './dto/cart.dto';
 import { CartService } from './cart.service';
 import { CommonResponse } from 'src/common/common-response';
+import { GetCartItems } from 'src/orders/type/order.type';
 
 @Controller('cart')
 export class CartController {
@@ -25,7 +26,7 @@ export class CartController {
     @UseGuards(JwtAuthGuard)
     async getCartItems(
         @Req() req: any
-    ) {
+    ): Promise<CommonResponse<GetCartItems>> {
         const userSeq = req.user.seq;
         return this.cartService.getCartItems(userSeq)
     }
@@ -42,7 +43,7 @@ export class CartController {
     }
 
     // 장바구니 비우기
-    @Delete('items')
+    @Delete('items/all')
     @UseGuards(JwtAuthGuard)
     async clearCartItems(
         @Req() req: any
@@ -60,6 +61,16 @@ export class CartController {
     ): Promise<CommonResponse<{ productSeq: number; newQuantity: number }>> {
         const userSeq = req.user.seq;
         return this.cartService.updateQuantity(userSeq, updateQuantityDto);
+    }
+
+    // 장바구니 개수 조회 (헤더용)
+    @Get('items/count')
+    @UseGuards(JwtAuthGuard)
+    async getCartItemCount(
+        @Req() req: any
+    ) {
+        const userSeq = req.user.seq;
+        return this.cartService.getCartItemCount(userSeq);
     }
 
 }

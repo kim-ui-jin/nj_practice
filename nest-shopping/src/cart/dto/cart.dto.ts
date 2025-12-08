@@ -32,6 +32,6 @@ export class RemoveCartItemDto {
     @IsArray()
     @ArrayNotEmpty({ message: '삭제할 상품을 선택해주세요.'})
     @Type(() => Number)
-    @IsInt({ each: true})
+    @IsInt({ each: true })
     productSeqList: number[];
 }
