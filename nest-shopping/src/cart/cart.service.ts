@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { AddToCartDto, UpdateQuantityDto } from './dto/cart.dto';
+import { AddToCartDto, RemoveCartItemDto, UpdateQuantityDto } from './dto/cart.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from 'src/products/entity/product.entity';
 import { Repository } from 'typeorm';
@@ -124,13 +124,19 @@ export class CartService {
     // 장바구니 등록 취소
     async removeCartItem(
         userSeq: number,
-        productSeq: number
+        removeCartItemDto: RemoveCartItemDto
     ): Promise<CommonResponse<void>> {
 
-        const result = await this.cartRepository.delete({
-            user: { seq: userSeq },
-            product: { seq: productSeq },
-        });
+        const { productSeqList } = removeCartItemDto;
+
+        const result = await this.cartRepository
+            .createQueryBuilder()
+            .delete()
+            .from(Cart)
+            .where('user_seq = :userSeq', { userSeq})
+            .andWhere('product_seq IN (:...productSeqList)', { productSeqList })
+            .execute();
+
         if (!result.affected) {
             throw new NotFoundException('장바구니에 해당 상품이 없습니다.');
         }

@@ -125,29 +125,24 @@ export class UserService {
 
         const { currentPassword } = getMyInfoDto
 
-        try {
-            const user = await this.userRepository
-                .createQueryBuilder('user')
-                .addSelect('user.userPassword')
-                .where('user.seq = :seq', { seq: userSeq })
-                .getOne();
+        const user = await this.userRepository
+            .createQueryBuilder('user')
+            .addSelect('user.userPassword')
+            .where('user.seq = :seq', { seq: userSeq })
+            .getOne();
 
-            if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+        if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
-            const comparedPassword = await bcrypt.compare(currentPassword, user.userPassword);
-            if (!comparedPassword) throw new BadRequestException('비밀번호가 올바르지 않습니다.');
+        const comparedPassword = await bcrypt.compare(currentPassword, user.userPassword);
+        if (!comparedPassword) throw new BadRequestException('비밀번호가 올바르지 않습니다.');
 
-            const { userPassword, ...safe } = user;
+        const { userPassword, ...safe } = user;
 
-            return {
-                success: true,
-                message: '내 정보 조회에 성공했습니다.',
-                data: safe
-            };
-        } catch (e) {
-            if (e instanceof HttpException) throw e;
-            throw new InternalServerErrorException('내 정보 조회 중 오류가 발생했습니다.');
-        }
+        return {
+            success: true,
+            message: '내 정보 조회에 성공했습니다.',
+            data: safe
+        };
 
     }
 
