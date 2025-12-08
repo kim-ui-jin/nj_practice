@@ -126,16 +126,12 @@ export class UserService {
         const { currentPassword } = getMyInfoDto
 
         try {
-            const user = await this.userRepository.findOne({
-                where: { seq: userSeq },
-                select: {
-                    userId: true,
-                    userName: true,
-                    userEmail: true,
-                    userPhone: true,
-                    userPassword: true
-                }
-            });
+            const user = await this.userRepository
+                .createQueryBuilder('user')
+                .addSelect('user.userPassword')
+                .where('user.seq = :seq', { userSeq })
+                .getOne();
+                
             if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
             const comparedPassword = await bcrypt.compare(currentPassword, user.userPassword);
