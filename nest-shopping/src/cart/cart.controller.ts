@@ -68,7 +68,7 @@ export class CartController {
     @UseGuards(JwtAuthGuard)
     async getCartItemCount(
         @Req() req: any
-    ) {
+    ): Promise<CommonResponse<{ itemCount: number }>> {
         const userSeq = req.user.seq;
         return this.cartService.getCartItemCount(userSeq);
     }

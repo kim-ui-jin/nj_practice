@@ -102,12 +102,19 @@ export class ProductsService {
         userSeq: number
     ): Promise<CommonResponse<void>> {
 
-        const result = await this.productRepository.delete({
-            seq: productSeq,
-            creator: { seq: userSeq }
+        const product = await this.productRepository.findOne({
+            where: {
+                seq: productSeq,
+                creator: { seq: userSeq }
+            }
         });
+        if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
+        if (product.status === ProductStatus.DELETED) {
+            throw new BadRequestException('이미 삭제된 상품입니다.');
+        }
 
-        if (!result.affected) throw new NotFoundException('상품을 찾을 수 없습니다.');
+        product.status = ProductStatus.DELETED;
+        await this.productRepository.save(product);
 
         return {
             success: true,
@@ -136,7 +143,9 @@ export class ProductsService {
     }
 
     // 검색어로 상품 조회
-    async searchByName(searchByNameDto: SearchByNameDto): Promise<Paged<ProductCardDto>> {
+    async searchByName(
+        searchByNameDto: SearchByNameDto
+    ): Promise<Paged<ProductCardDto>> {
 
         const { keyword, page, limit } = searchByNameDto;
 
