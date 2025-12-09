@@ -34,8 +34,5 @@ jobs:
                 port: 22
                 script: |
                   cd /home/ubuntu/nj_practice/nest-shopping
-                  git pull origin main
-                  sudo npm ci || sudo npm install
-                  sudo NODE_ENV=production npm run migration:run
                   sudo docker compose pull
                   sudo docker compose up -d
