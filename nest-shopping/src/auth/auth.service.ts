@@ -34,11 +34,15 @@ export class AuthService {
                     seq: true,
                     userId: true,
                     userName: true,
-                    userPassword: true
+                    userPassword: true,
+                    status: true
                 }
             });
             if (!user) {
                 throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
+            }
+            if (user.status === 'INACTIVE') {
+                throw new UnauthorizedException('비활성화된 계정입니다. 관리자에게 문의해주세요.');
             }
 
             const comparedPassword = await bcrypt.compare(userPassword, user.userPassword);
