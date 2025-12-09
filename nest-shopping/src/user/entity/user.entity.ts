@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { UserAuthority } from "./user-authority.entity";
+import { UserStatus } from "src/common/enums/user-status.enum";
 
 @Entity('users')
 export class User {
@@ -33,4 +34,7 @@ export class User {
 
     @Column({ type: 'varchar', length: 255, nullable: false })
     userAddress: string;
+
+    @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
+    status: UserStatus;
 }

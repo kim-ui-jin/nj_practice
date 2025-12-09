@@ -8,6 +8,7 @@ import { UserAuthority } from './entity/user-authority.entity';
 import { RoleType } from 'src/common/enums/role-type.enum';
 import { CommonResponse } from 'src/common/common-response';
 import { GetMyInfo, SafeUser } from './type/user-type';
+import { UserStatus } from 'src/common/enums/user-status.enum';
 
 
 
@@ -152,27 +153,34 @@ export class UserService {
         deleteAccountDto: DeleteAccountDto
     ): Promise<CommonResponse<void>> {
 
-        const { currentPassword } = deleteAccountDto
+        const { currentPassword } = deleteAccountDto;
 
         const user = await this.userRepository.findOne({
             where: { seq: userSeq },
-            select: { seq: true, userPassword: true }
+            select: {
+                seq: true,
+                userPassword: true,
+                status: true
+            }
         });
         if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+        if (user.status === UserStatus.INACTIVE) {
+            throw new BadRequestException('이미 탈퇴한 회원입니다');
+        }
 
         const comparedPassword = await bcrypt.compare(currentPassword, user.userPassword);
         if (!comparedPassword) throw new UnauthorizedException('비밀번호가 올바르지 않습니다.');
 
         try {
 
-            const cancel = await this.userRepository.update(
+            const result = await this.userRepository.update(
                 { seq: userSeq },
-                { refreshTokenHash: null }
+                { 
+                    refreshTokenHash: null,
+                    status: UserStatus.INACTIVE
+                }
             );
-            if (!cancel.affected) throw new InternalServerErrorException('토큰 무효화에 실패했습니다.');
-
-            const deleteAccount = await this.userRepository.delete({ seq: userSeq });
-            if (!deleteAccount.affected) throw new InternalServerErrorException('회원 삭제에 실패했습니다.');
+            if (!result.affected) throw new InternalServerErrorException('회원탈퇴 처리에 실패했습니다.');
 
             return {
                 success: true,

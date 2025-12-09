@@ -55,8 +55,8 @@ export class UserController {
         @Req() req: any, 
         @Body() deleteAccountDto: DeleteAccountDto
     ): Promise<CommonResponse<void>> {
-        const user = req.user;
-        return this.userService.deleteAccount(user.seq, deleteAccountDto);
+        const userSeq = req.user.seq;
+        return this.userService.deleteAccount(userSeq, deleteAccountDto);
     }
 
     @Get()
