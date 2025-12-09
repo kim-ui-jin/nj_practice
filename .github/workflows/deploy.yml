@@ -1,3 +1,4 @@
+#CICD
 name: CI/CD to EC2 with Docker
 
 on:
