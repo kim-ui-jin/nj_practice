@@ -1,6 +1,6 @@
 import { BadRequestException, HttpException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Order } from './entity/order.entity';
 import { OrderItem } from './entity/order-item.entity';
 import { Cart } from 'src/cart/entity/cart.entity';
@@ -21,6 +21,7 @@ export class OrdersService {
         @InjectRepository(Cart) private readonly cartRepository: Repository<Cart>,
         @InjectRepository(Product) private readonly productRepository: Repository<Product>,
         private readonly paymentsService: PaymentsService,
+        private readonly dataSource: DataSource
     ) { }
 
     // 배송비 계산
@@ -75,31 +76,41 @@ export class OrdersService {
 
         try {
 
-            const order = this.orderRepository.create({
-                orderNumber: `ORD-${randomUUID()}`,
-                user: { seq: userSeq },
-                itemsTotal,
-                shippingFee,
-                orderTotal,
-                receiverName,
-                receiverPhone,
-                zipCode,
-                address1,
-                address2: address2 || null,
-                memo: memo || null,
-            });
-            const savedOrder = await this.orderRepository.save(order);
+            const savedOrder = await this.dataSource.transaction(async (manager) => {
 
-            const orderItemsData = cartItems.map((item) => ({
-                order: savedOrder,
-                product: { seq: item.productSeq },
-                productName: item.name,
-                unitPrice: item.price,
-                quantity: item.quantity,
-                lineTotal: Number(item.lineTotal),
-            }));
-            const orderItems = this.orderItemRepository.create(orderItemsData);
-            await this.orderItemRepository.save(orderItems);
+                const orderRepo = manager.getRepository(Order);
+                const orderItemRepo = manager.getRepository(OrderItem);
+
+                const order = orderRepo.create({
+                    orderNumber: `ORD-${randomUUID()}`,
+                    user: { seq: userSeq },
+                    itemsTotal,
+                    shippingFee,
+                    orderTotal,
+                    receiverName,
+                    receiverPhone,
+                    zipCode,
+                    address1,
+                    address2: address2 || null,
+                    memo: memo || null,
+                });
+
+                const createdOrder = await this.orderRepository.save(order);
+
+                const orderItemsData = cartItems.map((item) => ({
+                    order: savedOrder,
+                    product: { seq: item.productSeq },
+                    productName: item.name,
+                    unitPrice: item.price,
+                    quantity: item.quantity,
+                    lineTotal: Number(item.lineTotal),
+                }));
+
+                const orderItems = orderItemRepo.create(orderItemsData);
+                await orderItemRepo.save(orderItems);
+
+                return createdOrder;
+            })
 
             return {
                 success: true,

@@ -161,7 +161,9 @@ export class AuthService {
     }
 
     // 리프레시 토큰을 DB에 저장
-    async saveRefreshToken(seq: number, refreshToken: string): Promise<void> {
+    async saveRefreshToken(
+        seq: number, refreshToken: string
+    ): Promise<void> {
 
         try {
             const refreshTokenHash = await bcrypt.hash(refreshToken, 10);

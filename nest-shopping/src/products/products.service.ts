@@ -218,33 +218,39 @@ export class ProductsService {
 
     // 썸네일 수정
     async updateThumbnail(
-        id: number,
+        productSeq: number,
         userSeq: number,
         thumbnailUrl: string | null
-    ) {
+    ): Promise<Product> {
         const product = await this.productRepository.findOne({
-            where: { seq: id }
+            where: { seq: productSeq },
+            relations: { creator: true }
         });
         if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
+        if (product.creator.seq !== userSeq) {
+            throw new ForbiddenException('본인이 등록한 상품만 수정할 수 있습니다.');
+        }
 
         product.thumbnailUrl = thumbnailUrl;
-
         return this.productRepository.save(product);
     }
 
     // 이미지 수정
     async updateImages(
-        id: number,
+        productSeq: number,
         userSeq: number,
         imageUrls: string[] | null,
-    ) {
+    ): Promise<Product> {
         const product = await this.productRepository.findOne({
-            where: { seq: id },
+            where: { seq: productSeq },
+            relations: { creator: true }
         })
         if (!product) throw new NotFoundException('상품을 찾을 수 없습니다.');
+        if (product.creator.seq !== userSeq) {
+            throw new ForbiddenException('본인이 등록한 상품만 수정할 수 있습니다.');
+        }
 
         product.imageUrls = imageUrls;
-
         return this.productRepository.save(product);
     }
 

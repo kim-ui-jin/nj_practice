@@ -153,7 +153,7 @@ export class CartService {
         userSeq: number
     ): Promise<CommonResponse<void>> {
 
-        const exist = this.cartRepository.exists({
+        const exist = await this.cartRepository.exists({
             where: { user: { seq: userSeq } }
         });
         if (!exist) throw new BadRequestException('이미 비어 있는 장바구니입니다.');

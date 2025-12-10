@@ -105,29 +105,29 @@ export class ProductsController {
     }
 
     // 썸네일 수정
-    @Put(':id/thumbnail')
+    @Put('productSeq/thumbnail')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(RoleType.SELLER)
     async updateThumbnail(
-        @Param('id', ParseIntPipe) id: number,
+        @Param('productSeq', ParseIntPipe) productSeq: number,
         @Req() req: any,
         @Body() updateThumbnailDto: UpdateThumbnailDto
-    ) {
+    ): Promise<Product> {
         const userSeq = req.user.seq;
-        return this.productsService.updateThumbnail(id, userSeq, updateThumbnailDto.thumbnailUrl ?? null)
+        return this.productsService.updateThumbnail(productSeq, userSeq, updateThumbnailDto.thumbnailUrl ?? null)
     }
 
     // 이미지 수정
-    @Put(':id/images')
+    @Put(':productSeq/images')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(RoleType.SELLER)
     async updateImages(
-        @Param('id') id: number,
+        @Param('productSeq') productSeq: number,
         @Req() req: any,
         @Body() updateImagesDto: UpdateImagesDto,
-    ) {
+    ): Promise<Product> {
         const userSeq = req.user.seq;
-        return this.productsService.updateImages(id, userSeq, updateImagesDto.imageUrls ?? null);
+        return this.productsService.updateImages(productSeq, userSeq, updateImagesDto.imageUrls ?? null);
     }
 
     // 상품 상태 변경

@@ -269,7 +269,7 @@ export class UserService {
         userSeq: number,
         userAddress: string
     ): Promise<CommonResponse<void>> {
-        const user = this.userRepository.findOne({
+        const user = await this.userRepository.findOne({
             where: { seq: userSeq }
         });
         if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
