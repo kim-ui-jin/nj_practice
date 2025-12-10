@@ -98,7 +98,7 @@ export class OrdersService {
                 const createdOrder = await this.orderRepository.save(order);
 
                 const orderItemsData = cartItems.map((item) => ({
-                    order: savedOrder,
+                    order: createdOrder,
                     product: { seq: item.productSeq },
                     productName: item.name,
                     unitPrice: item.price,
