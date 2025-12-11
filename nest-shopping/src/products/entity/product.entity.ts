@@ -2,9 +2,10 @@ import { Transform } from "class-transformer";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import tz from "dayjs/plugin/timezone"
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { User } from "src/user/entity/user.entity";
 import { ProductStatus } from "src/common/enums/product-status.enum";
+import { Tag } from "src/tags/entity/tag.entity";
 dayjs.extend(utc);
 dayjs.extend(tz);
 
@@ -58,5 +59,13 @@ export class Product {
 
     @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.INACTIVE})
     status: ProductStatus;
+
+    @ManyToMany(() => Tag, tag => tag.products)
+    @JoinTable({
+        name: 'product_tags',
+        joinColumn: { name: 'product_seq', referencedColumnName: 'seq'},
+        inverseJoinColumn: { name: 'tag_seq', referencedColumnName: 'seq'}
+    })
+    tags: Tag[];
 
 }

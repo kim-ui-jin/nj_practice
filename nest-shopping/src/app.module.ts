@@ -14,6 +14,7 @@ import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { HttpModule } from '@nestjs/axios';
+import { TagsModule } from './tags/tags.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { HttpModule } from '@nestjs/axios';
     OrdersModule,
     PaymentsModule,
     HttpModule,
+    TagsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,11 +1,12 @@
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entity/product.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateProductDto, ProductCardDto, SearchByNameDto, UpdateProductDto, UpdateProductStatusDto } from './dto/product.dto';
 import { instanceToPlain } from 'class-transformer';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { CommonResponse } from 'src/common/common-response';
+import { Tag } from 'src/tags/entity/tag.entity';
 
 const escapeLike = (s: string) => s.replace(/[%_]/g, (char) => '\\' + char);
 
@@ -16,6 +17,7 @@ export class ProductsService {
 
     constructor(
         @InjectRepository(Product) private readonly productRepository: Repository<Product>,
+        @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>
     ) { }
 
     // 상품 등록
@@ -31,7 +33,8 @@ export class ProductsService {
             description,
             thumbnailUrl,
             imageUrls,
-            status
+            status,
+            tagSeqList
         } = createProductDto;
 
         const product = this.productRepository.create({
@@ -45,6 +48,13 @@ export class ProductsService {
             creator: { seq: userSeq }
         });
 
+        if (tagSeqList && tagSeqList.length > 0) {
+            const tags = await this.tagRepository.findBy({
+                seq: In(tagSeqList)
+            });
+            product.tags = tags;
+        }
+
         const saved = await this.productRepository.save(product);
 
         return {
@@ -52,7 +62,6 @@ export class ProductsService {
             message: '상품 등록 성공',
             data: saved
         };
-
 
     }
 

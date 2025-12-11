@@ -39,6 +39,12 @@ export class CreateProductDto {
     @IsOptional()
     @IsEnum(ProductStatus, { message: 'status는 ACTIVE 또는 INACTIVE만 가능합니다.' })
     status?: ProductStatus;
+
+    @IsOptional()
+    @IsArray()
+    @Type(() => Number)
+    @IsInt({ each: true })
+    tagSeqList?: number[];
 }
 
 export class SearchByNameDto {
