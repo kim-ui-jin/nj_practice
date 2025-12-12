@@ -95,7 +95,7 @@ export class OrdersService {
                     memo: memo || null,
                 });
 
-                const createdOrder = await this.orderRepository.save(order);
+                const createdOrder = await orderRepo.save(order);
 
                 const orderItemsData = cartItems.map((item) => ({
                     order: createdOrder,
