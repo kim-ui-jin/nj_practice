@@ -1,4 +1,4 @@
-import { HttpException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LoginUserDto } from 'src/user/dto/user.dto';
@@ -19,12 +19,16 @@ export class AuthService {
         private readonly configService: ConfigService,
     ) { }
 
+    private readonly logger = new Logger(AuthService.name);
+
     // 로그인
     async login(
         loginUserDto: LoginUserDto
     ): Promise<CommonResponse<{ accessToken: string, refreshToken: string }>> {
 
         const { userId, userPassword } = loginUserDto;
+
+        this.logger.log('Login attempt', { userId });
 
         try {
 
@@ -162,7 +166,8 @@ export class AuthService {
 
     // 리프레시 토큰을 DB에 저장
     async saveRefreshToken(
-        seq: number, refreshToken: string
+        seq: number,
+        refreshToken: string
     ): Promise<void> {
 
         try {

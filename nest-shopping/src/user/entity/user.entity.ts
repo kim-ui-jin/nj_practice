@@ -1,4 +1,4 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, DeleteDateColumn, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { UserAuthority } from "./user-authority.entity";
 import { UserStatus } from "src/common/enums/user-status.enum";
 
@@ -37,4 +37,7 @@ export class User {
 
     @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
     status: UserStatus;
+
+    @DeleteDateColumn({ type: 'datetime', precision: 0, nullable: true })
+    deletedAt: Date | null;
 }

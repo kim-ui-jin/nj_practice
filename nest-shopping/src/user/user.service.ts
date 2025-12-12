@@ -160,8 +160,10 @@ export class UserService {
             select: {
                 seq: true,
                 userPassword: true,
-                status: true
-            }
+                status: true,
+                deletedAt: true
+            },
+            withDeleted: true
         });
         if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
         if (user.status === UserStatus.INACTIVE) {
@@ -173,14 +175,22 @@ export class UserService {
 
         try {
 
-            const result = await this.userRepository.update(
-                { seq: userSeq },
-                { 
-                    refreshTokenHash: null,
-                    status: UserStatus.INACTIVE
+            await this.userRepository.manager.transaction(async (manager) => {
+
+                const updateResult = await this.userRepository.update(
+                    { seq: userSeq },
+                    {
+                        refreshTokenHash: null,
+                        status: UserStatus.INACTIVE
+                    }
+                );
+                if (!updateResult.affected) {
+                    throw new InternalServerErrorException('회원탈퇴 처리에 실패했습니다.');
                 }
-            );
-            if (!result.affected) throw new InternalServerErrorException('회원탈퇴 처리에 실패했습니다.');
+
+                await manager.getRepository(User).softDelete({ seq: userSeq });
+
+            });
 
             return {
                 success: true,
