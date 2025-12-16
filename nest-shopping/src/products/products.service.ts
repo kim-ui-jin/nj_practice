@@ -7,6 +7,7 @@ import { instanceToPlain } from 'class-transformer';
 import { ProductStatus } from 'src/common/enums/product-status.enum';
 import { CommonResponse } from 'src/common/common-response';
 import { Tag } from 'src/tags/entity/tag.entity';
+import { S3Service } from 'src/common/s3/s3.service';
 
 const escapeLike = (s: string) => s.replace(/[%_]/g, (char) => '\\' + char);
 
@@ -17,7 +18,8 @@ export class ProductsService {
 
     constructor(
         @InjectRepository(Product) private readonly productRepository: Repository<Product>,
-        @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>
+        @InjectRepository(Tag) private readonly tagRepository: Repository<Tag>,
+        private readonly s3Service: S3Service
     ) { }
 
     // 상품 등록
@@ -65,22 +67,42 @@ export class ProductsService {
 
     }
 
-    // 상품 썸네일 업로드
+    // // 상품 썸네일 업로드
+    // async uploadThumbnail(
+    //     file: Express.Multer.File
+    // ) {
+    //     if (!file) throw new BadRequestException('썸네일 파일을 첨부하세요.');
+    //     const thumbnailUrl = `/static/products/thumbnails/${file.filename}`;
+    //     return thumbnailUrl;
+    // }
+
+    // // 상품 이미지 업로드
+    // async uploadImages(
+    //     files: Express.Multer.File[]
+    // ) {
+    //     if (!files || files.length === 0) throw new BadRequestException('최소 1개 이상의 이미지 파일을 첨부하세요.');
+    //     const imageUrls = files.map(file => `/static/products/images/${file.filename}`);
+    //     return imageUrls;
+    // }
+
+    // 상품 썸네일 업로드 (s3)
     async uploadThumbnail(
         file: Express.Multer.File
     ) {
         if (!file) throw new BadRequestException('썸네일 파일을 첨부하세요.');
-        const thumbnailUrl = `/static/products/thumbnails/${file.filename}`;
+        const thumbnailUrl = await this.s3Service.uploadImage(file, 'products/thumbnails');
         return thumbnailUrl;
     }
 
-    // 상품 이미지 업로드
+    // 상품 이미지 업로드 (s3)
     async uploadImages(
         files: Express.Multer.File[]
     ) {
         if (!files || files.length === 0) throw new BadRequestException('최소 1개 이상의 이미지 파일을 첨부하세요.');
-        const imageUrls = files.map(file => `/static/products/images/${file.filename}`);
-        return imageUrls;
+        const imageUrls = await Promise.all(
+            files.map((f) => this.s3Service.uploadImage(f, 'products/images'))
+        );
+        return imageUrls.map((img) => img.url);
     }
 
     // 전체 조회
