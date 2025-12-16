@@ -90,8 +90,8 @@ export class ProductsService {
         file: Express.Multer.File
     ) {
         if (!file) throw new BadRequestException('썸네일 파일을 첨부하세요.');
-        const thumbnailUrl = await this.s3Service.uploadImage(file, 'products/thumbnails');
-        return thumbnailUrl;
+        const { url } = await this.s3Service.uploadImage(file, 'products/thumbnails');
+        return url;
     }
 
     // 상품 이미지 업로드 (s3)
