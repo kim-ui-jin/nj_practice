@@ -1,2 +1,2 @@
 ## Database ERD
-- [ERD 보기](./docs/erd/erd/md)
+- [ERD 보기](./nest_shooping/docs/erd/erd/md)
