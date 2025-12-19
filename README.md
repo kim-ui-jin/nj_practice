@@ -1,3 +1,7 @@
+## Project Overview
+NestJS 기반 쇼핑몰 백엔드 프로젝트입니다.  
+JWT 인증(Access/Refresh), 상품/장바구니/주문/결제(토스), 이미지 업로드(S3), Docker + GitHub Actions 기반 배포를 구현했습니다.
+
 ### Backend
 - **Node.js** v20.x
 - **NestJS** v11.x
