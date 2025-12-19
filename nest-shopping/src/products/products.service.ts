@@ -59,11 +59,7 @@ export class ProductsService {
 
         const saved = await this.productRepository.save(product);
 
-        return {
-            success: true,
-            message: '상품 등록 성공',
-            data: saved
-        };
+        return CommonResponse.ok('상품 등록 성공', saved);
 
     }
 
@@ -165,11 +161,7 @@ export class ProductsService {
         });
         if (products.length === 0) throw new NotFoundException('등록한 상품이 없습니다.');
 
-        return {
-            success: true,
-            message: '내가 등록한 상품 조회 성공',
-            data: products
-        };
+        return CommonResponse.ok('내가 등록한 상품 조회 성공', products);
 
     }
 

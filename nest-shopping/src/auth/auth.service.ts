@@ -72,14 +72,13 @@ export class AuthService {
 
             await this.saveRefreshToken(user.seq, refreshToken);
 
-            return {
-                success: true,
-                message: '로그인 성공',
-                data: {
+            return CommonResponse.ok(
+                '로그인 성공',
+                {
                     accessToken: accessToken,
                     refreshToken: refreshToken
                 }
-            };
+            );
 
         } catch (e) {
             if (e instanceof HttpException) throw e;
@@ -194,10 +193,7 @@ export class AuthService {
             { refreshTokenHash: null }
         );
         if (!logout) throw new InternalServerErrorException('로그아웃에 실패했습니다.');
-        return {
-            success: true,
-            message: '로그아웃 성공'
-        };
+        return CommonResponse.ok('로그아웃에 성공했습니다.');
 
     }
 }

@@ -110,12 +110,9 @@ export class UserService {
     ): Promise<CommonResponse<void>> {
 
         const exists = await this.userRepository.exists({ where: { userId } });
+        if (exists) throw new ConflictException('이미 사용중인 아이디입니다.');
 
-        return {
-            success: true,
-            message: exists ? '이미 사용중인 아이디입니다.' : '사용 가능한 아이디입니다.',
-        };
-
+        return CommonResponse.ok('사용 가능한 아이디입니다.');
     }
 
     // 내 정보조회
@@ -139,11 +136,7 @@ export class UserService {
 
         const { userPassword, ...safe } = user;
 
-        return {
-            success: true,
-            message: '내 정보 조회에 성공했습니다.',
-            data: safe
-        };
+        return CommonResponse.ok('내 정보 조회에 성공했습니다.', safe);
 
     }
 
@@ -192,10 +185,7 @@ export class UserService {
 
             });
 
-            return {
-                success: true,
-                message: '회원탈퇴가 완료되었습니다.'
-            };
+            return CommonResponse.ok('회원탈퇴가 완료되었습니다.');
 
         } catch (e) {
             if (e instanceof HttpException) throw e;
