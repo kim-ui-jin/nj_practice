@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, HttpException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, Inject, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entity/user.entity';
 import { QueryFailedError, Repository } from 'typeorm';
@@ -9,6 +9,7 @@ import { RoleType } from 'src/common/enums/role-type.enum';
 import { CommonResponse } from 'src/common/common-response';
 import { GetMyInfo, SafeUser } from './type/user-type';
 import { UserStatus } from 'src/common/enums/user-status.enum';
+import Redis from 'ioredis';
 
 
 
@@ -16,7 +17,8 @@ import { UserStatus } from 'src/common/enums/user-status.enum';
 export class UserService {
     constructor(
         @InjectRepository(User) private readonly userRepository: Repository<User>,
-        @InjectRepository(UserAuthority) private readonly userAuthorityRepository: Repository<UserAuthority>
+        @InjectRepository(UserAuthority) private readonly userAuthorityRepository: Repository<UserAuthority>,
+        @Inject('REDIS') private readonly redis: Redis
     ) { }
 
     // 회원가입
@@ -140,6 +142,10 @@ export class UserService {
 
     }
 
+    private getRefreshKey(userSeq: number) {
+        return `auth:refresh:${userSeq}`;
+    }
+
     // 회원 탈퇴
     async deleteAccount(
         userSeq: number,
@@ -170,7 +176,9 @@ export class UserService {
 
             await this.userRepository.manager.transaction(async (manager) => {
 
-                const updateResult = await this.userRepository.update(
+                const repo = manager.getRepository(User);
+
+                const updateResult = await repo.update(
                     { seq: userSeq },
                     {
                         refreshTokenHash: null,
@@ -181,9 +189,11 @@ export class UserService {
                     throw new InternalServerErrorException('회원탈퇴 처리에 실패했습니다.');
                 }
 
-                await manager.getRepository(User).softDelete({ seq: userSeq });
+                await repo.softDelete({ seq: userSeq });
 
             });
+
+            await this.redis.del(this.getRefreshKey(userSeq));
 
             return CommonResponse.ok('회원탈퇴가 완료되었습니다.');
 
@@ -219,12 +229,13 @@ export class UserService {
     }
 
     // 유저 조회
-    async findByField(
+    async findForAuth(
         seq: number
     ): Promise<User | null> {
-        const user = await this.userRepository.findOne({ where: { seq } })
-        if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
-        return user;
+        return await this.userRepository.findOne({ 
+            where: { seq },
+            relations: { authorities: true }
+        });
     }
 
     // SELLER 권한 등록

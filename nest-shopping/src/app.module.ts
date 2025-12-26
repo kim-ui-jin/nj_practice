@@ -15,6 +15,7 @@ import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { HttpModule } from '@nestjs/axios';
 import { TagsModule } from './tags/tags.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { TagsModule } from './tags/tags.module';
     PaymentsModule,
     HttpModule,
     TagsModule,
+    RedisModule,
   ],
   controllers: [AppController],
   providers: [AppService],

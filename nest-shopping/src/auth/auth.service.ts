@@ -1,4 +1,4 @@
-import { HttpException, Injectable, InternalServerErrorException, UnauthorizedException, Logger } from '@nestjs/common';
+import { HttpException, Injectable, InternalServerErrorException, UnauthorizedException, Logger, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LoginUserDto } from 'src/user/dto/user.dto';
@@ -9,6 +9,7 @@ import { JwtPayload } from './jwt/payload.interface';
 import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { CommonResponse } from 'src/common/common-response';
+import Redis from 'ioredis';
 
 @Injectable()
 export class AuthService {
@@ -17,6 +18,7 @@ export class AuthService {
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
+        @Inject('REDIS') private readonly redis: Redis
     ) { }
 
     private readonly logger = new Logger(AuthService.name);
@@ -111,6 +113,7 @@ export class AuthService {
                 });
                 const seq = tokenExpired.seq;
                 if (seq) {
+                    await this.redis.del(this.getRefreshKey(seq));
                     await this.userRepository.update(seq, { refreshTokenHash: null });
                 }
                 throw new UnauthorizedException('리프레시 토큰 만료');
@@ -130,12 +133,29 @@ export class AuthService {
                 refreshTokenHash: true
             }
         });
-        if (!user?.refreshTokenHash) throw new UnauthorizedException('등록된 리프레시 토큰이 없습니다.');
+        if (!user) throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
 
-        const matched = await bcrypt.compare(refreshToken, user.refreshTokenHash);
-        if (!matched) {
-            await this.userRepository.update(user.seq, { refreshTokenHash: null })
-            throw new UnauthorizedException('유효하지 않은 리프레시 토큰');
+        const redisHash = await this.redis.get(this.getRefreshKey(user.seq));
+
+        if (redisHash) {
+            const matched = await bcrypt.compare(refreshToken, redisHash);
+            if (!matched) {
+                await this.redis.del(this.getRefreshKey(user.seq));
+                await this.userRepository.update(user.seq, { refreshTokenHash: null });
+                throw new UnauthorizedException('유효하지 않은 리프레시 토큰');
+            }
+
+        } else {
+            if (!user.refreshTokenHash) throw new UnauthorizedException('등록된 리프레시 토큰이 없습니다.');
+
+            const matched = await bcrypt.compare(refreshToken, user.refreshTokenHash);
+            if (!matched) {
+                await this.userRepository.update(user.seq, { refreshTokenHash: null })
+                throw new UnauthorizedException('유효하지 않은 리프레시 토큰');
+            }
+
+            const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
+            await this.redis.set(this.getRefreshKey(user.seq), user.refreshTokenHash, 'EX', REFRESH_TTL_SECONDS);
         }
 
         const newAccessPayload = {
@@ -163,6 +183,10 @@ export class AuthService {
 
     }
 
+    private getRefreshKey(userSeq: number) {
+        return `auth:refresh:${userSeq}`;
+    }
+
     // 리프레시 토큰을 DB에 저장
     async saveRefreshToken(
         seq: number,
@@ -171,6 +195,9 @@ export class AuthService {
 
         try {
             const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+            const key = this.getRefreshKey(seq);
+            const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
+            await this.redis.set(key, refreshTokenHash, 'EX', REFRESH_TTL_SECONDS);
             await this.userRepository.update(seq, { refreshTokenHash });
         } catch (e) {
             throw new InternalServerErrorException('리프레시 토큰 저장 중 오류가 발생했습니다.')
@@ -179,14 +206,31 @@ export class AuthService {
     }
 
     // 토큰 검증
-    tokenValidateUser(payload: JwtPayload): Promise<User | null> {
-        return this.userService.findByField(payload.seq);
+    async tokenValidateUser(
+        payload: JwtPayload
+    ) {
+        if (!payload?.seq) return null;
+
+        const user = await this.userService.findForAuth(payload.seq);
+        if (!user) return null;
+        if (user.status === 'INACTIVE') return null;
+
+        const roles = (user.authorities ?? []).map(a => String(a.authorityName).toUpperCase());
+
+        return {
+            seq: user.seq,
+            userId: user.userId,
+            userName: user.userName,
+            roles
+        };
     }
 
     // 로그아웃
     async logout(
         userSeq: number
     ): Promise<CommonResponse<void>> {
+
+        await this.redis.del(this.getRefreshKey(userSeq));
 
         const logout = await this.userRepository.update(
             { seq: userSeq },

@@ -15,8 +15,24 @@ services:
     # .env 파일에 있는 환경변수들을 컨테이너 안으로 주입     
     env_file:
       - .env.production
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     # 호스트 ./uploads ↔ 컨테이너 /app/uploads 폴더를 공유(업로드 파일 보존)
     volumes:
       - ./uploads:/app/uploads
     # Dockerfile의 CMD 대신 이 명령으로 컨테이너 시작
-    command: ["npm", "run", "start:prod"]  
+    command: ["npm", "run", "start:prod"]
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: nest-shopping-redis
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
