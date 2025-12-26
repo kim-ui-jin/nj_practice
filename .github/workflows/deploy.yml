@@ -35,6 +35,9 @@ jobs:
                 port: 22
                 script: |
                   cd /home/ubuntu/nj_practice/nest-shopping
+                  git fetch --all
+                  git reset --hard origin/main
+
                   sudo docker compose pull
                   sudo docker compose run --rm app npm run migration:run:prod
-                  sudo docker compose up -d
+                  sudo docker compose up -d --remove-orphans
