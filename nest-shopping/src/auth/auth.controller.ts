@@ -20,7 +20,9 @@ export class AuthController {
 
     // 토큰 재발급
     @Post('refresh')
-    async refresh(@Body('refreshToken') refreshToken: string) {
+    async refresh(
+        @Body('refreshToken') refreshToken: string
+    ) {
         if (!refreshToken) throw new BadRequestException('리프레시 토큰이 없습니다.');
         return this.authService.refreshByToken(refreshToken);
     }

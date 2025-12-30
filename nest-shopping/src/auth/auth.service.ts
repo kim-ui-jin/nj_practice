@@ -22,6 +22,41 @@ export class AuthService {
     ) { }
 
     private readonly logger = new Logger(AuthService.name);
+    private readonly LOGIN_FAIL_LIMIT = 5;
+    private readonly LOGIN_LOCK_SECONDS = 15 * 60;
+
+    private getLoginFailKey(userId: string) {
+        return `auth:login_fail:user:${userId}`
+    }
+
+    private async assertNotLocked(userId: string) {
+        const key = this.getLoginFailKey(userId);
+        const failCount = Number((await this.redis.get(key)) ?? 0);
+
+        if (failCount >= this.LOGIN_FAIL_LIMIT) {
+            const ttlSec = await this.redis.ttl(key);
+            const ttlMin = ttlSec > 0 ? Math.ceil(ttlSec/60) : null;
+            this.logger.warn(
+                `Login locked. userId=${userId}, failCount=${failCount}, ttlSec=${ttlSec}, ttlMin=${ttlMin ?? 'unknown'}`
+            );
+            throw new UnauthorizedException(
+                "로그인 시도 횟수가 초과되었습니다. 잠시 후 다시 시도해주세요."
+            );
+        }
+    }
+
+    private async increaseLoginFail(userId: string) {
+        const key = this.getLoginFailKey(userId);
+        const cnt = await this.redis.incr(key);
+        if (cnt === 1) {
+            await this.redis.expire(key, this.LOGIN_LOCK_SECONDS);
+        }
+        return cnt;
+    }
+
+    private async clearLoginFail(userId: string) {
+        await this.redis.del(this.getLoginFailKey(userId));
+    }
 
     // 로그인
     async login(
@@ -34,6 +69,8 @@ export class AuthService {
 
         try {
 
+            await this.assertNotLocked(userId);
+
             const user = await this.userRepository.findOne({
                 where: { userId },
                 select: {
@@ -45,6 +82,7 @@ export class AuthService {
                 }
             });
             if (!user) {
+                await this.increaseLoginFail(userId);
                 throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
             }
             if (user.status === 'INACTIVE') {
@@ -53,8 +91,11 @@ export class AuthService {
 
             const comparedPassword = await bcrypt.compare(userPassword, user.userPassword);
             if (!comparedPassword) {
+                await this.increaseLoginFail(userId);
                 throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
             }
+
+            await this.clearLoginFail(userId);
 
             const accessPayload = {
                 seq: user.seq,
