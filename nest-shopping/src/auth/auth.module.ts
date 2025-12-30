@@ -9,6 +9,7 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt/jwt.strategy';
 import { UserModule } from 'src/user/user.module';
 import { UserAuthority } from 'src/user/entity/user-authority.entity';
+import { LoginAttemptService } from './login-attempt.service';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { UserAuthority } from 'src/user/entity/user-authority.entity';
     UserModule
   ],
   exports: [JwtModule], // 다른 모듈에서 JwtModule과 사용할 수 있도록 내보냄
-  providers: [AuthService, UserService, JwtStrategy],
+  providers: [AuthService, UserService, JwtStrategy, LoginAttemptService],
   controllers: [AuthController]
 })
 export class AuthModule { }

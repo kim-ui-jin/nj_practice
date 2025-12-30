@@ -10,6 +10,7 @@ import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
 import { CommonResponse } from 'src/common/common-response';
 import Redis from 'ioredis';
+import { LoginAttemptService } from './login-attempt.service';
 
 @Injectable()
 export class AuthService {
@@ -18,44 +19,42 @@ export class AuthService {
         private readonly userService: UserService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
+        private readonly loginAttemptService: LoginAttemptService,
         @Inject('REDIS') private readonly redis: Redis
     ) { }
 
     private readonly logger = new Logger(AuthService.name);
-    private readonly LOGIN_FAIL_LIMIT = 5;
-    private readonly LOGIN_LOCK_SECONDS = 15 * 60;
 
-    private getLoginFailKey(userId: string) {
-        return `auth:login_fail:user:${userId}`
+    private issueTokens(
+        user: { seq: number, userId: string, userName: string }
+    ) {
+        const accessToken = this.jwtService.sign(
+            {
+                seq: user.seq,
+                userId: user.userId,
+                userName: user.userName
+            },
+            {
+                secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+                expiresIn: '15m'
+            });
+
+        const refreshToken = this.jwtService.sign(
+            {
+                seq: user.seq
+            },
+            {
+                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
+                expiresIn: '7d'
+            });
+
+        return { accessToken, refreshToken };
+
     }
 
-    private async assertNotLocked(userId: string) {
-        const key = this.getLoginFailKey(userId);
-        const failCount = Number((await this.redis.get(key)) ?? 0);
-
-        if (failCount >= this.LOGIN_FAIL_LIMIT) {
-            const ttlSec = await this.redis.ttl(key);
-            const ttlMin = ttlSec > 0 ? Math.ceil(ttlSec/60) : null;
-            this.logger.warn(
-                `Login locked. userId=${userId}, failCount=${failCount}, ttlSec=${ttlSec}, ttlMin=${ttlMin ?? 'unknown'}`
-            );
-            throw new UnauthorizedException(
-                "로그인 시도 횟수가 초과되었습니다. 잠시 후 다시 시도해주세요."
-            );
-        }
-    }
-
-    private async increaseLoginFail(userId: string) {
-        const key = this.getLoginFailKey(userId);
-        const cnt = await this.redis.incr(key);
-        if (cnt === 1) {
-            await this.redis.expire(key, this.LOGIN_LOCK_SECONDS);
-        }
-        return cnt;
-    }
-
-    private async clearLoginFail(userId: string) {
-        await this.redis.del(this.getLoginFailKey(userId));
+    private async throwLoginFail(userId: string): Promise<never> {
+        await this.loginAttemptService.increaseLoginFail(userId);
+        throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
     }
 
     // 로그인
@@ -67,69 +66,39 @@ export class AuthService {
 
         this.logger.log('Login attempt', { userId });
 
-        try {
+        await this.loginAttemptService.assertNotLocked(userId);
 
-            await this.assertNotLocked(userId);
-
-            const user = await this.userRepository.findOne({
-                where: { userId },
-                select: {
-                    seq: true,
-                    userId: true,
-                    userName: true,
-                    userPassword: true,
-                    status: true
-                }
-            });
-            if (!user) {
-                await this.increaseLoginFail(userId);
-                throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
+        const user = await this.userRepository.findOne({
+            where: { userId },
+            select: {
+                seq: true,
+                userId: true,
+                userName: true,
+                userPassword: true,
+                status: true
             }
-            if (user.status === 'INACTIVE') {
-                throw new UnauthorizedException('비활성화된 계정입니다. 관리자에게 문의해주세요.');
-            }
-
-            const comparedPassword = await bcrypt.compare(userPassword, user.userPassword);
-            if (!comparedPassword) {
-                await this.increaseLoginFail(userId);
-                throw new UnauthorizedException('아이디 또는 비밀번호가 올바르지 않습니다.');
-            }
-
-            await this.clearLoginFail(userId);
-
-            const accessPayload = {
-                seq: user.seq,
-                userId: user.userId,
-                userName: user.userName
-            };
-            const refreshPayload = { seq: user.seq };
-
-            const accessToken = this.jwtService.sign(accessPayload, {
-                secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
-                expiresIn: '15m'
-            });
-            const refreshToken = this.jwtService.sign(refreshPayload, {
-                secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-                expiresIn: '7d'
-            });
-
-            await this.saveRefreshToken(user.seq, refreshToken);
-
-            return CommonResponse.ok(
-                '로그인 성공',
-                {
-                    accessToken: accessToken,
-                    refreshToken: refreshToken
-                }
-            );
-
-        } catch (e) {
-            if (e instanceof HttpException) throw e;
-            if (e instanceof QueryFailedError) {
-                throw new InternalServerErrorException('로그인 처리 중 데이터베이스 오류가 발생했습니다.');
-            }
-            throw new InternalServerErrorException('로그인 처리 중 오류가 발생했습니다.')
+        });
+        if (!user) return this.throwLoginFail(userId);
+        if (user.status === 'INACTIVE') {
+            throw new UnauthorizedException('비활성화된 계정입니다. 관리자에게 문의해주세요.');
         }
+
+        const comparedPassword = await bcrypt.compare(userPassword, user.userPassword);
+        if (!comparedPassword) return this.throwLoginFail(userId);
+
+        await this.loginAttemptService.clearLoginFail(userId);
+
+        const { accessToken, refreshToken } = this.issueTokens(user);
+
+        await this.saveRefreshToken(user.seq, refreshToken);
+
+        return CommonResponse.ok(
+            '로그인 성공',
+            {
+                accessToken,
+                refreshToken
+            }
+        );
 
     }
 
@@ -138,7 +107,6 @@ export class AuthService {
     ): Promise<{ accessToken: string, refreshToken: string }> {
 
         const refreshSecret = this.configService.getOrThrow<string>('JWT_REFRESH_SECRET');
-        const accessSecret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
 
         let decoded: any;
 
@@ -199,28 +167,14 @@ export class AuthService {
             await this.redis.set(this.getRefreshKey(user.seq), user.refreshTokenHash, 'EX', REFRESH_TTL_SECONDS);
         }
 
-        const newAccessPayload = {
-            seq: user.seq,
-            userId: user.userId,
-            userName: user.userName
-        };
-        const newRefreshPayload = { seq: user.seq };
-
-        const newAccessToken = this.jwtService.sign(newAccessPayload, {
-            secret: accessSecret,
-            expiresIn: '15m'
-        })
-        const newRefreshToken = this.jwtService.sign(newRefreshPayload, {
-            secret: refreshSecret,
-            expiresIn: '7d'
-        })
+        const { accessToken, refreshToken: newRefreshToken } = this.issueTokens(user);
 
         await this.saveRefreshToken(user.seq, newRefreshToken);
 
         return {
-            accessToken: newAccessToken,
+            accessToken,
             refreshToken: newRefreshToken
-        }
+        };
 
     }
 
@@ -234,15 +188,11 @@ export class AuthService {
         refreshToken: string
     ): Promise<void> {
 
-        try {
-            const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-            const key = this.getRefreshKey(seq);
-            const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
-            await this.redis.set(key, refreshTokenHash, 'EX', REFRESH_TTL_SECONDS);
-            await this.userRepository.update(seq, { refreshTokenHash });
-        } catch (e) {
-            throw new InternalServerErrorException('리프레시 토큰 저장 중 오류가 발생했습니다.')
-        }
+        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+        const key = this.getRefreshKey(seq);
+        const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
+        await this.redis.set(key, refreshTokenHash, 'EX', REFRESH_TTL_SECONDS);
+        await this.userRepository.update(seq, { refreshTokenHash });
 
     }
 
