@@ -7,7 +7,10 @@ JWT 인증(Access/Refresh), 상품/장바구니/주문/결제(토스), 이미지
 - **NestJS** v11.x
 - **TypeScript** v5.x
 - **TypeORM** v0.3.x
+
+### Database
 - **MySQL** v8.0
+- **Redis**
 
 ### Authentication / Authorization
 - **JWT**
