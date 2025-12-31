@@ -28,3 +28,5 @@ JWT 인증(Access/Refresh), 상품/장바구니/주문/결제(토스), 이미지
 ### Documentation
 - **Mermaid ERD**
   - [ERD 보기](./nest-shopping/docs/erd/erd.md)
+
+- [📄 프로젝트 개발 일지 (Notion)]((https://www.notion.so/nestjs-26cc95f93cec80558d44f9a333311170)
